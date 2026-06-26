@@ -1,0 +1,18 @@
+name: yuvi_waveform
+description: YuVi Rays waveform display — circular turntable (Visual Vinyl style) and linear strip widgets.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.11.4
+
+dependencies:
+  flutter:
+    sdk: flutter
+  yuvi_audio_engine:
+    path: ../yuvi_audio_engine
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0

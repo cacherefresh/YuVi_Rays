@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base href="$FLUTTER_BASE_HREF">
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="YuVi Rays — FOSS Web Audio Digital Vinyl System">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="YuVi Rays DVS">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+  <link rel="icon" type="image/png" href="favicon.png"/>
+  <title>YuVi Rays DVS</title>
+  <link rel="manifest" href="manifest.json">
+
+  <!--
+    Tone.js — audio processing and Web Audio API routing.
+    NexusUI and Wavesurfer.js can be added here as additional layers.
+  -->
+  <script src="https://cdn.jsdelivr.net/npm/tone@14.9.11/build/Tone.js"></script>
+
+  <!-- YuVi Rays JS bridge — must load after Tone.js -->
+  <script src="js/yuvi_bridge.js"></script>
+
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #1C1C1E;
+      height: 100%;
+      overflow: hidden;
+    }
+  </style>
+</head>
+<body>
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+</html>
