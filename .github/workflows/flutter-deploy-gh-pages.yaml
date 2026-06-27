@@ -38,7 +38,11 @@ jobs:
 
       - uses: subosito/flutter-action@v2
         with:
+          flutter-version: '3.41.6'
           channel: stable
+
+      - name: Enable Flutter Web
+        run: flutter config --enable-web
 
       - run: flutter pub get
       # because it's a mono repo structure... r.c.
@@ -48,15 +52,18 @@ jobs:
         id: pages
         uses: actions/configure-pages@v5
 
-      - run: flutter build web --base-href "${{ steps.pages.outputs.base_path }}/" --target lib/web_main.dart
+      # Custom domain: configure-pages returns base_path="/" so the formula
+      # expands to "//" (double-slash) and breaks Flutter asset loading. r.c.
+      - run: flutter build web --base-href / --target lib/web_main.dart
     #  - run: flutter build web --base-href "${{ env.BASE_HREF }}/" --target lib/web_main.dart
         # because it's a mono repo structure... r.c.
         working-directory: ./
-        
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: flutter_app/build/web
+          # build/web is the output path when working-directory is ./  r.c.
+          path: build/web
 
       - name: Deploy to Github Pages
         id: deployment
