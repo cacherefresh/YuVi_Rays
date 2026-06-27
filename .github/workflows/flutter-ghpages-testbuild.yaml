@@ -21,7 +21,7 @@ jobs:
       # because it's a mono repo structure... r.c.
         working-directory: ./
 
-      - run: flutter build web --target lib/main.dart
+      - run: flutter build web --target lib/web_main.dart
         # because it's a mono repo structure... r.c.
         working-directory: ./
 
