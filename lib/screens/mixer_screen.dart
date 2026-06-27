@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:yuvi_audio_engine/yuvi_audio_engine.dart';
 import 'package:yuvi_controls/yuvi_controls.dart';
 import 'package:yuvi_deck/yuvi_deck.dart';
 
@@ -112,7 +113,15 @@ class _MixerScreenState extends State<MixerScreen> {
                       presetTracks: _presets,
                     ),
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 6),
+                  // ── Master VU meter ──────────────────────────────────
+                  SizedBox(
+                    width: 44,
+                    child: VuMeterWidget(
+                      levelProvider: () => yuViDVS.getMasterLevel(),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
                   Expanded(
                     child: DeckWidget(
                       state: mixer.stateB,

@@ -17,4 +17,5 @@ extension type YuViDVSJS._(JSObject _) implements JSObject {
   external void setEQ(String deckId, String band, double value);
   external void setPitch(String deckId, double semitones);
   external double getPosition(String deckId);
+  external double getMasterLevel();
 }

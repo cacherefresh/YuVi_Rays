@@ -1,4 +1,4 @@
-library yuvi_audio_engine;
+library;
 
 export 'src/models/deck_state.dart';
 export 'src/deck_audio_controller.dart';
