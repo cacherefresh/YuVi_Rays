@@ -44,3 +44,8 @@ THis is what we are creating: a Digitial Vinyl System for the WEb audio Api. it 
  the deck should be a component, so we could add 2 or 3 or 4 decks if we wanted to.
 
  seperate the ui from the heavy lifting 
+
+ i want in the center between the two decks the master channel display of the typical green yellow red that you see on a standard dj mixer when the two tracks are coming together that you see on PIONEER MIXERS with many green a few yellow and one or two red if it gets that loud.
+
+ instead of the wave spinning like it is in a circle while playing, the white line should remain stationary t around the 2 oclock position and the wave graph should be going through the white line as it is playing 
+

@@ -7,8 +7,14 @@
   const YuViDVS = {
     decks: {},
     _cb: null,
+    // Lazily created on first initDeck call so Tone context is ready.
+    _masterMeter: null,
 
     initDeck: function (deckId) {
+      if (!this._masterMeter) {
+        // smoothing=0.8 gives a natural ballistic feel matching Pioneer meters
+        this._masterMeter = new Tone.Meter({ normalRange: false, smoothing: 0.8 });
+      }
       // EQ3 uses a proper MultibandSplit crossover so the three bands together
       // reconstruct the full spectrum. Killing all three → true silence.
       // Crossover points: Low 0–250 Hz, Mid 250–2500 Hz, High 2500 Hz–Nyquist.
@@ -25,6 +31,7 @@
       player.connect(eq3);
       eq3.connect(vol);
       vol.toDestination();
+      vol.connect(this._masterMeter); // tap combined level for VU meter
 
       this.decks[deckId] = {
         player:    player,
@@ -184,6 +191,18 @@
         db = value * 6;          // 0 → 0 dB, +1 → +6 dB
       }
       deck.eq3[band].value = db;
+    },
+
+    getMasterLevel: function () {
+      if (!this._masterMeter) return -100;
+      const val = this._masterMeter.getValue();
+      if (typeof val === 'number') return isFinite(val) ? val : -100;
+      // Stereo array — take the louder channel
+      if (Array.isArray(val)) {
+        const db = Math.max(isFinite(val[0]) ? val[0] : -100, isFinite(val[1]) ? val[1] : -100);
+        return db;
+      }
+      return -100;
     },
 
     setPitch: function (deckId, semitones) {
