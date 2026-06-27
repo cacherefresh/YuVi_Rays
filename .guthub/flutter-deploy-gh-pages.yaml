@@ -1,0 +1,65 @@
+# This is a basic workflow to help you get started with Actions
+
+name: CI Deploy Flutter MonoRepo App with nested Flutter Packages - by Rob aka YuVi
+
+# Controls when the workflow will run
+on:
+  # Triggers the workflow on push or pull request events but only for the "sanctuary" branch
+  push:
+    branches: [ "sanctuary" ]
+  
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# env:
+#  BASE_HREF: /yuvi-rays-dvs/
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "build"
+  build:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    # this shows a nice "View Deployment" button ^_~ R.C.
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - run: flutter pub get
+      # because it's a mono repo structure... r.c.
+        working-directory: ./
+
+      - name: Setup Pages
+        id: pages
+        uses: actions/configure-pages@v5
+
+      - run: flutter build web --base-href "${{ steps.pages.outputs.base_path }}/" --target lib/web_main.dart
+    #  - run: flutter build web --base-href "${{ env.BASE_HREF }}/" --target lib/web_main.dart
+        # because it's a mono repo structure... r.c.
+        working-directory: ./
+        
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: flutter_app/build/web
+
+      - name: Deploy to Github Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
+
+
