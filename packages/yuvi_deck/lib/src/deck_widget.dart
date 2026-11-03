@@ -1,10 +1,10 @@
-import 'dart:js_interop';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:web/web.dart' as web;
 import 'package:yuvi_audio_engine/yuvi_audio_engine.dart';
 import 'package:yuvi_controls/yuvi_controls.dart';
 import 'package:yuvi_waveform/yuvi_waveform.dart';
+
+import 'blob_url.dart';
 
 class DeckWidget extends StatefulWidget {
   const DeckWidget({
@@ -56,12 +56,13 @@ class _DeckWidgetState extends State<DeckWidget> {
     );
     if (result == null || result.files.isEmpty) return;
     final file = result.files.first;
-    final bytes = file.bytes;
-    if (bytes == null) return;
 
-    final blobParts = <JSAny>[bytes.toJS].toJS;
-    final blob = web.Blob(blobParts, web.BlobPropertyBag(type: 'audio/mpeg'));
-    final url = web.URL.createObjectURL(blob);
+    // Web: wrap the picked bytes in a blob: URL the Tone.js bridge can
+    // load. Native: file_picker gives a real filesystem path instead —
+    // bytesToBlobUrl() is a no-op there (see blob_url_stub.dart).
+    final bytes = file.bytes;
+    final url = (bytes != null ? bytesToBlobUrl(bytes, 'audio/mpeg') : null) ?? file.path;
+    if (url == null) return;
     widget.controller.loadUrl(url, trackName: file.name);
   }
 

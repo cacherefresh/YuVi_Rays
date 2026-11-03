@@ -11,6 +11,8 @@ dependencies:
     sdk: flutter
   yuvi_audio_engine:
     path: ../yuvi_audio_engine
+  yuvi_midi_engine:
+    path: ../yuvi_midi_engine
 
 dev_dependencies:
   flutter_test:

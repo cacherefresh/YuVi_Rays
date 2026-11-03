@@ -1,21 +1,5 @@
-import 'dart:js_interop';
-
-@JS('YuViDVS')
-external YuViDVSJS get yuViDVS;
-
-extension type YuViDVSJS._(JSObject _) implements JSObject {
-  external void setDartCallback(JSFunction fn);
-  external void initDeck(String deckId);
-  external void loadUrl(String deckId, String url);
-  external void play(String deckId);
-  external void pause(String deckId);
-  external void stop(String deckId);
-  external void seek(String deckId, double normalizedPosition);
-  external void setCuePoint(String deckId);
-  external void jumpToCue(String deckId);
-  external void setVolume(String deckId, double normalized);
-  external void setEQ(String deckId, String band, double value);
-  external void setPitch(String deckId, double semitones);
-  external double getPosition(String deckId);
-  external double getMasterLevel();
-}
+// `dart:js_interop` (used by the real bridge) only compiles for web targets.
+// On native (macOS/Windows) builds, fall back to a silent no-op bridge so
+// the app still compiles and launches — the native audio engine that
+// replaces this for desktop is tracked separately (see packages/yuvi_vst_engine).
+export 'js_bridge_stub.dart' if (dart.library.js_interop) 'js_bridge_web.dart';

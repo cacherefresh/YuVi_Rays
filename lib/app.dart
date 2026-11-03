@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:yuvi_midi_engine/yuvi_midi_engine.dart';
 
+import 'providers/app_mode_provider.dart';
 import 'providers/mixer_provider.dart';
 import 'screens/mixer_screen.dart';
 
@@ -9,8 +11,12 @@ class YuViRaysApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => MixerProvider(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AppModeProvider()),
+        ChangeNotifierProvider(create: (_) => MixerProvider()),
+        ChangeNotifierProvider(create: (_) => MidiLearnController()),
+      ],
       child: MaterialApp(
         title: 'YuVi Rays DVS',
         debugShowCheckedModeBanner: false,

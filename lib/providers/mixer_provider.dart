@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:js_interop';
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
@@ -8,23 +7,21 @@ import 'package:yuvi_audio_engine/yuvi_audio_engine.dart';
 class MixerProvider extends ChangeNotifier {
   final DeckState stateA = DeckState('A');
   final DeckState stateB = DeckState('B');
+  final AuxState auxState = AuxState();
 
   late final DeckAudioController deckA;
   late final DeckAudioController deckB;
+  late final AuxChannelController aux;
 
   double crossfader = 0.5;
 
   MixerProvider() {
     deckA = DeckAudioController(stateA);
     deckB = DeckAudioController(stateB);
+    aux = AuxChannelController(auxState);
 
     // Single global callback dispatches to the right deck controller
-    yuViDVS.setDartCallback(
-      ((JSAny? json) {
-        if (json == null) return;
-        _handleJsEvent((json as JSString).toDart);
-      }).toJS,
-    );
+    yuViDVS.setDartCallback(_handleJsEvent);
   }
 
   void _handleJsEvent(String jsonStr) {

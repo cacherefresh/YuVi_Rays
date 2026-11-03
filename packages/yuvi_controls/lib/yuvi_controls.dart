@@ -4,3 +4,6 @@ export 'src/pitch_fader_widget.dart';
 export 'src/transport_controls.dart';
 export 'src/audio_graph_widget.dart';
 export 'src/vu_meter_widget.dart';
+export 'src/aux_channel_widget.dart';
+export 'src/midi_map_panel.dart';
+export 'src/floating_panel.dart';

@@ -1,0 +1,17 @@
+name: yuvi_vst_engine
+description: YuVi Rays native VST3/AU plugin-hosting engine (Flutter Desktop only) — dart:ffi bindings into native/yuvi_vst_host.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.11.4
+
+dependencies:
+  flutter:
+    sdk: flutter
+  ffi: ^2.1.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0

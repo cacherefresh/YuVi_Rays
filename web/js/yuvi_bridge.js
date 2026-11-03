@@ -241,6 +241,68 @@
         deck.ticker = null;
       }
     },
+
+    // ── AUX / virtual-audio-input channel ─────────────────────────────
+    // Third mixer channel: no platter, just gain + fader. Feeds from a
+    // real audio input device — including a virtual audio cable
+    // (BlackHole on macOS, VB-Cable on Windows) carrying the output of a
+    // VST running in a standalone host / Ableton / Logic — into the same
+    // master bus the two decks use.
+    initAux: function () {
+      if (this.aux) return;
+      if (!this._masterMeter) {
+        this._masterMeter = new Tone.Meter({ normalRange: false, smoothing: 0.8 });
+      }
+      const mic  = new Tone.UserMedia();
+      const gain = new Tone.Gain(0.8);
+      const vol  = new Tone.Volume(0);
+      mic.connect(gain);
+      gain.connect(vol);
+      vol.toDestination();
+      vol.connect(this._masterMeter);
+      this.aux = { mic: mic, gainNode: gain, volNode: vol, _gain: 0.8, _volume: 0.8 };
+    },
+
+    listAudioInputs: async function () {
+      // Requesting (and immediately releasing) a mic stream unlocks real
+      // device labels — enumerateDevices() returns blank labels until
+      // microphone permission has been granted at least once.
+      try {
+        const probe = await navigator.mediaDevices.getUserMedia({ audio: true });
+        probe.getTracks().forEach(function (t) { t.stop(); });
+      } catch (e) {
+        // Permission denied — device ids still enumerate, just without labels.
+      }
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const inputs = devices
+        .filter(function (d) { return d.kind === 'audioinput'; })
+        .map(function (d) { return { id: d.deviceId, label: d.label || ('Input ' + d.deviceId.slice(0, 6)) }; });
+      return JSON.stringify(inputs);
+    },
+
+    selectAuxInput: async function (deviceId) {
+      if (!this.aux) this.initAux();
+      await this.aux.mic.open(deviceId);
+    },
+
+    setAuxGain: function (normalized) {
+      if (!this.aux) return;
+      this.aux._gain = Math.max(0, Math.min(1, normalized));
+      this.aux.gainNode.gain.value = this.aux._gain;
+    },
+
+    setAuxVolume: function (normalized) {
+      if (!this.aux) return;
+      this.aux._volume = Math.max(0, Math.min(1, normalized));
+      const db = this.aux._volume <= 0.0001 ? -60 : 20 * Math.log10(this.aux._volume);
+      this.aux.volNode.volume.value = db;
+    },
+
+    getAuxLevel: function () {
+      // Shares the master meter tap with the two decks — the AUX signal
+      // is already summed into the same bus by the time it's measured.
+      return this.getMasterLevel();
+    },
   };
 
   window.YuViDVS = YuViDVS;
