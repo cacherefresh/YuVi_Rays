@@ -283,3 +283,16 @@ cues: 0.235 s, 44.122, 55.090, 166.185, 170.288, 178.597, with colours.
 The app shows slots 1-4, so cues 5 and 6 aren't shown.
 Serato keeps MP3 hot cues IN THE FILE (GEOB tags). ~/Music/_Serato_/
 "database V2" only lists the file path (plus crates and history).
+
+### 2026-11-03: MPK Mini Mk II K8 → crossfader
+
+- Rob asked for K8 to drive the crossfader: full left = min (Deck A), full right = max (Deck B), knob centre = crossfader centre.
+- `KnobAction.crossfader` is now `centred`: `KnobBinding.scale` maps 64 to exactly the middle of the range (0.5), not 64/127 ≈ 0.504.
+- K8 no longer controls headphones; headphones volume is on screen only. Takeover is `jump` (default), so the crossfader follows the knob at once.
+- Tests: `KnobBinding.scale` crossfader case (yuvi_input) and "K8 crossfader" in test/midi_fake_runner_test.dart.
+
+### 2026-11-03: MPK Mini Mk II pads 5-8 → hot cues 1-2
+
+- Bank A pads 5, 6 (notes 48, 49) = Deck A hot cues 1, 2. Pads 7, 8 (notes 50, 51) = Deck B hot cues 1, 2. Same `hotCue` action as bank B: empty sets at the playhead, set jumps.
+- Clash: the piano keys share channel 1 and start at note 48 at the default octave, so keys C..D# also fire these. Fix on the device: OCT+ once, or change the pad notes in the Akai editor (then update the YAML).
+- Tests: "bank A pads 5-8" group in test/midi_fake_runner_test.dart; the layout test now expects pads 5-8 as hot cues.

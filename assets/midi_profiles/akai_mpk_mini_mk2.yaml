@@ -7,19 +7,21 @@
 #
 # Knob layout (top row Deck A, bottom row Deck B):
 #   K1 A volume   K2 A pitch coarse   K3 A pitch fine   K4 master
-#   K5 B volume   K6 B pitch coarse   K7 B pitch fine   K8 headphones
+#   K5 B volume   K6 B pitch coarse   K7 B pitch fine   K8 crossfader
 #
-# Pads, bank A (bottom row):
-#   pad 1 A play/pause   pad 2 A cue   pad 3 B play/pause   pad 4 B cue
+# Pads, bank A:
+#   bottom row: pad 1 A play/pause   pad 2 A cue   pad 3 B play/pause   pad 4 B cue
+#   top row:    pad 5 A hot cue 1    pad 6 A hot cue 2    pad 7 B hot cue 1    pad 8 B hot cue 2
 # Pads, bank B (press PAD BANK), hot cues:
 #   bottom row pads 1-4 = Deck A hot cues 1-4 (notes 32-35)
 #   top row    pads 5-8 = Deck B hot cues 1-4 (notes 36-39)
 #   An empty hot cue is set at the playhead; a set one jumps there.
 #   Clear hot cues on screen (Shift + click) or with Shift + 1-4 / 7-0.
 #
-# Caution: the piano keys also send notes on channel 1. At the default
-# octave they start at note 48, clear of pads 1-4 (44-47). With OCT- pressed
-# the keys overlap the pads and will trigger them.
+# Caution: the piano keys also send notes on channel 1, and at the default
+# octave they start at note 48, the same notes as pads 5-8 (48-51). So the
+# lowest keys C, C#, D, D# also fire those hot cues. Press OCT+ once to move
+# the keys clear. With OCT- pressed the keys also overlap pads 1-4.
 
 name: Akai MPK Mini Mk II
 device_name_contains: [MPK Mini Mk II]
@@ -33,7 +35,7 @@ knobs:
   - { cc: 3, action: pitchFine,   deck: A, min: -1,  max: 1,  takeover: pickup }  # K3
   - { cc: 7, action: pitchFine,   deck: B, min: -1,  max: 1,  takeover: pickup }  # K7
   - { cc: 4, action: masterVolume }                                               # K4
-  - { cc: 8, action: headphoneVolume }                                            # K8
+  - { cc: 8, action: crossfader }   # K8: full left = Deck A, centre = both, full right = Deck B
 
 pads:
   # Pad 1: Deck A play / pause.
@@ -44,6 +46,12 @@ pads:
   - { note: 46, channel: 1, deck: B, on_press: togglePlay }
   # Pad 4: Deck B cue, same as pad 2.
   - { note: 47, channel: 1, deck: B, on_press: armCue, on_tap: playFromCue, on_hold: commitCue, hold_ms: 1000 }
+
+  # Pads 5-8 (bank A top row): the first two hot cues of each deck.
+  - { note: 48, channel: 1, deck: A, slot: 1, on_press: hotCue }   # pad 5
+  - { note: 49, channel: 1, deck: A, slot: 2, on_press: hotCue }   # pad 6
+  - { note: 50, channel: 1, deck: B, slot: 1, on_press: hotCue }   # pad 7
+  - { note: 51, channel: 1, deck: B, slot: 2, on_press: hotCue }   # pad 8
 
   # Bank B: hot cues. Bottom row = Deck A, top row = Deck B.
   - { note: 32, channel: 1, deck: A, slot: 1, on_press: hotCue }

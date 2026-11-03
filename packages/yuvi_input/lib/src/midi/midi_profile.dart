@@ -8,11 +8,20 @@ enum KnobAction {
   channelVolume(deck: true, min: 0, max: 1),
   masterVolume(deck: false, min: 0, max: 1),
   headphoneVolume(deck: false, min: 0, max: 1),
-  crossfader(deck: false, min: 0, max: 1),
+  crossfader(deck: false, min: 0, max: 1, centred: true),
   pitchCoarse(deck: true, min: -16, max: 16),
   pitchFine(deck: true, min: -1, max: 1);
 
-  const KnobAction({required this.deck, required this.min, required this.max});
+  const KnobAction({
+    required this.deck,
+    required this.min,
+    required this.max,
+    this.centred = false,
+  });
+
+  /// Whether the knob's centre (64) means the middle of the range, e.g. the
+  /// crossfader's centre. Ranges that span zero are always centred on 0.
+  final bool centred;
 
   /// Whether the action needs a `deck`.
   final bool deck;
@@ -81,12 +90,19 @@ class KnobBinding {
   ///
   /// When the range spans zero (e.g. pitch −16..+16), the knob's centre
   /// value 64 maps to exactly 0, so the centre of the knob is "no change".
+  /// For a [KnobAction.centred] action (the crossfader), 64 maps to exactly
+  /// the middle of the range. Either way 0 is [min] and 127 is [max].
   double scale(int raw) {
     final v = raw.clamp(0, 127);
-    if (min < 0 && max > 0) {
-      return v < 64 ? min * (64 - v) / 64 : max * (v - 64) / 63;
-    }
-    return min + (max - min) * v / 127;
+    final double? centre = (min < 0 && max > 0)
+        ? 0
+        : action.centred
+            ? (min + max) / 2
+            : null;
+    if (centre == null) return min + (max - min) * v / 127;
+    return v < 64
+        ? centre - (centre - min) * (64 - v) / 64
+        : centre + (max - centre) * (v - 64) / 63;
   }
 
   /// Pick-up tolerance in value units: 3% of the range.

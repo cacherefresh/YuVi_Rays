@@ -50,10 +50,11 @@ The knobs are arranged in columns: the top row is Deck A and the bottom row is D
 ```
         col 1          col 2                 col 3                 col 4
 top     K1 A volume    K2 A pitch (coarse)   K3 A pitch (fine)     K4 master
-bottom  K5 B volume    K6 B pitch (coarse)   K7 B pitch (fine)     K8 headphones
+bottom  K5 B volume    K6 B pitch (coarse)   K7 B pitch (fine)     K8 crossfader
 
-pads, bank A (bottom row):
-        pad 1 A play/pause   pad 2 A cue   pad 3 B play/pause   pad 4 B cue
+pads, bank A:
+        top row      pad 5 A hot cue 1    pad 6 A hot cue 2    pad 7 B hot cue 1    pad 8 B hot cue 2
+        bottom row   pad 1 A play/pause   pad 2 A cue          pad 3 B play/pause   pad 4 B cue
 
 pads, bank B (press PAD BANK), hot cues:
         top row      pads 5-8 = Deck B hot cues 1-4
@@ -66,8 +67,9 @@ pads, bank B (press PAD BANK), hot cues:
 | K2, K6 | Coarse pitch, −16% to +16%. The knob's centre is 0%. |
 | K3, K7 | Fine pitch, an extra −1% to +1%, added to the coarse pitch |
 | K4 | Master volume |
-| K8 | Headphones volume (see the note below) |
+| K8 | Crossfader. Full left is Deck A only, the knob's centre is both decks equally, full right is Deck B only. Headphones volume is on screen only. |
 | Pad 1, pad 3 | Play / pause for Deck A, Deck B |
+| Pads 5, 6 / pads 7, 8 | Hot cues 1 and 2 for Deck A / Deck B. An empty hot cue is set at the playhead. A set one jumps there. **Press OCT+ once:** at the default octave the lowest piano keys send the same notes and also fire these. |
 | Bank B pads | Hot cues. An empty hot cue is set at the playhead. A set one jumps there. |
 | Pad 2, pad 4 | **Tap** (let go within 1 second): play from the cue. **Hold** for 1 second: set the cue at the moment you first pressed. |
 

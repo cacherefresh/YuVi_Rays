@@ -41,11 +41,11 @@ void main() {
       }
     });
 
-    test('bank A pads 1-4 are transport; bank B pads 1-8 are hot cues', () {
+    test('bank A pads 1-4 are transport; bank A pads 5-8 and bank B are hot cues', () {
       final transport = profile.pads.where((p) => p.slot == null).map((p) => p.note);
       final hotCues = profile.pads.where((p) => p.slot != null).map((p) => p.note);
       expect(transport, device.padNotes.sublist(0, 4));
-      expect(hotCues, device.padNotes.sublist(8, 16));
+      expect(hotCues, [...device.padNotes.sublist(4, 8), ...device.padNotes.sublist(8, 16)]);
     });
 
     test('the profile is chosen for the device name Chrome reports', () {
@@ -117,6 +117,42 @@ void main() {
       final run = FakeMidiRunner(profile: profile)..sendAt(Duration.zero, [144, 39, 100]);
       expect(run.mixer.decks['B']!.log, ['setHotCue4']);
       expect(run.mixer.decks['A']!.log, isEmpty);
+    });
+  });
+
+  group('bank A pads 5-8: first two hot cues per deck', () {
+    test('pads 5, 6 drive Deck A hot cues 1, 2; pads 7, 8 drive Deck B', () {
+      final run = FakeMidiRunner(profile: profile);
+      run.sendAt(Duration.zero, [144, 48, 100]); // pad 5
+      run.sendAt(const Duration(milliseconds: 100), [144, 49, 100]); // pad 6
+      run.sendAt(const Duration(milliseconds: 200), [144, 50, 100]); // pad 7
+      run.sendAt(const Duration(milliseconds: 300), [144, 51, 100]); // pad 8
+      expect(run.mixer.decks['A']!.log, ['setHotCue1', 'setHotCue2']);
+      expect(run.mixer.decks['B']!.log, ['setHotCue1', 'setHotCue2']);
+    });
+
+    test('pad 5 sets hot cue 1, then jumps back to it', () {
+      final run = FakeMidiRunner(profile: profile);
+      run.sendAt(Duration.zero, [144, 44, 100]); // pad 1: play
+      run.sendAt(const Duration(seconds: 2), [144, 48, 100]); // pad 5: set at 2 s
+      run.sendAt(const Duration(seconds: 2, milliseconds: 100), [128, 48, 0]); // release
+      run.sendAt(const Duration(seconds: 6), [144, 48, 100]); // pad 5: jump to 2 s
+      final a = run.mixer.decks['A']!;
+      expect(a.log, ['play', 'setHotCue1', 'jumpHotCue1']);
+      expect(a.seconds, closeTo(2.0, 1e-9));
+    });
+  });
+
+  group('K8 crossfader', () {
+    test('full left = Deck A, centre = middle, full right = Deck B', () {
+      final run = FakeMidiRunner(profile: profile);
+      run.sendAt(Duration.zero, [176, 8, 0]);
+      expect(run.mixer.crossfader, 0);
+      run.sendAt(const Duration(milliseconds: 50), [176, 8, 64]);
+      expect(run.mixer.crossfader, 0.5);
+      run.sendAt(const Duration(milliseconds: 100), [176, 8, 127]);
+      expect(run.mixer.crossfader, 1);
+      expect(run.mixer.headphoneVolume, 1, reason: 'K8 no longer drives headphones');
     });
   });
 

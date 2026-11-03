@@ -59,6 +59,14 @@ void main() {
       expect(vol.scale(127), 1);
       expect(vol.scale(64), closeTo(0.504, 0.001));
     });
+
+    test('crossfader: full left = A, centre 64 = exactly middle, full right = B', () {
+      const xf = KnobBinding(cc: 8, action: KnobAction.crossfader, min: 0, max: 1);
+      expect(xf.scale(0), 0);
+      expect(xf.scale(64), 0.5);
+      expect(xf.scale(127), 1);
+      expect(xf.scale(32), 0.25);
+    });
   });
 
   group('MidiProfile YAML', () {

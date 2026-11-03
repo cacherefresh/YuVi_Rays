@@ -13,3 +13,4 @@ Implementation plans for YuVi Rays. One folder per plan, numbered in order.
 | 003 | [MPK Mini Mk II layout + MIDI config](003_mpk_mini_mapping_and_midi_config/plan.md) | Done | FR-006 |
 | 004 | [Tempo readout above pitch fader](004_tempo_readout/plan.md) | Done | Rob 2026-11-03 |
 | 005 | [feature/write-perm_storage-savefeature](005_write-perm_storage-savefeature/plan.md) | **Deferred** | FR-008, FR-004 saving |
+| 006 | [Secure committed files](006_secure_committed_files/plan.md) | **Deferred** | Rob 2026-11-03: user name in committed paths |
