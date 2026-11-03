@@ -49,3 +49,14 @@ THis is what we are creating: a Digitial Vinyl System for the WEb audio Api. it 
 
  instead of the wave spinning like it is in a circle while playing, the white line should remain stationary t around the 2 oclock position and the wave graph should be going through the white line as it is playing 
 
+
+
+## Working agreement (for Claude / AI agents)
+
+- Everything above is a feature request or raw initial design thought, not a fixed spec. If you know a better way, tell me before building it. Give a short reason and a recommendation. I decide.
+- Keep the code maintainable. Small packages with clear contracts. UI stays separate from audio. No bloat.
+- Rob writes his raw ideas and bugs in `_DEVELOPER_NOTES/notes_bugtracker_feature_request`. Read it for new requests. Never edit it.
+- Claude writes all of its own developer notes in `_DEVELOPER_NOTES/_NON_HUMAN_NOTES/`, kept separate from Rob's.
+- Implementation plans go in `_PLANS/`, one numbered folder per plan, indexed in `_PLANS/README.md`. Write or update the plan before larger features.
+- Ask questions only when the answer changes the work. Otherwise state the assumption and continue.
+- Merging to `sanctuary` deploys live to GitHub Pages. Run the `verify-web-build` skill before any PR.

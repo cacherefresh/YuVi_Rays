@@ -1,4 +1,7 @@
-assets/royalty_free_audio/
+# Local audio for the song menu: never committed (licensing). The empty
+# .gitkeep keeps the folder in git, because pubspec.yaml bundles it.
+assets/royalty_free_audio/*
+!assets/royalty_free_audio/.gitkeep
 
 # Miscellaneous
 

@@ -1,0 +1,91 @@
+YuVi Rays — Bug Tracker & Feature Requests
+==========================================
+Raw design thoughts live here. They are feature REQUESTS, not specs.
+Claude: if you see a better way, say so (see AGENTS.MD → "Working agreement").
+Detailed implementation plans live in ../_PLANS/.
+
+Status legend: [ ] open   [~] planned   [x] done   [?] needs decision
+
+
+------------------------------------------------------------------
+FR-001  MIDI controller support (opt-in setting)          [~] → _PLANS/001
+------------------------------------------------------------------
+Logged: 2026-11-02   Branch: feature/midi_hardware_plus_crossfader_via_audio
+
+Request (as written by Rob):
+  - Add an option setting that makes Chrome show its permission dialog
+    asking whether to connect the MIDI controller hardware.
+  - Controller in mind: Akai MPC-style unit with 8 touch-sensitive
+    (velocity) pads and at least 4 fader knobs.
+  - Fader 1 = MASTER volume
+  - Fader 2 = Deck A channel volume to master
+  - Fader 3 = Deck B channel volume to master
+  - Fader 4 = HEADPHONES volume
+  - For now headphones volume = same signal as master out. On a laptop
+    there is no second stereo output (no external sound card while
+    travelling; MacBook Pro). Must work on the WEB build in Chrome,
+    deployed to GitHub Pages.
+
+Notes / findings:
+  - Web MIDI API: navigator.requestMIDIAccess(). Chrome shows a
+    permission prompt for it (since Chrome 124, even without SysEx).
+    Needs a secure context: https (GitHub Pages) or localhost — both OK.
+  - Chrome remembers the grant per origin, so the prompt appears once.
+    The setting should only trigger the request when the user switches
+    it ON (user gesture), never on page load.
+  - Safari and Firefox-on-mac have limited / no Web MIDI. Chrome/Edge only.
+  - The exact Akai model matters for CC numbers (LPD8, MPK Mini, MPD218
+    all differ). Mappings should be DATA (a JSON profile) plus a
+    "MIDI learn" mode, not hard-coded CC numbers.
+  - Pads were not assigned. Proposal in _PLANS/001 (pads 1-4 = Deck A
+    play/cue/stop/set-cue, pads 5-8 = Deck B).
+
+Headphones / cue on a single laptop output — options found:
+  a) Mirror master (requested for v1). Fader 4 scales a separate
+     "headphones" gain node that, for now, feeds the same output.
+  b) SPLIT CUE (what Mixxx calls "split" mode): master summed to mono
+     in the LEFT ear, cue/headphone bus summed to mono in the RIGHT ear,
+     on the one stereo output. Works today on any laptop with wired
+     headphones. Recommended as the v2 step.
+  c) Second output DEVICE: route the headphone bus through a
+     MediaStreamAudioDestinationNode → <audio>.setSinkId(deviceId).
+     On a MacBook this works with Bluetooth headphones (AirPods) as the
+     cue device while speakers play master. Bluetooth latency
+     (~150-250 ms) makes it so-so for beat matching. Chrome only.
+
+
+------------------------------------------------------------------
+FR-002  Keyboard shortcuts for transport                  [~] → _PLANS/001
+------------------------------------------------------------------
+Logged: 2026-11-02
+
+Request: map keys so each deck's controls line up DOWN the keyboard.
+  Deck A (left)  :  {   :   >     →  play/pause, cue, stop
+  Deck B (right) :  ]   '   /     →  play/pause, cue, stop
+
+Interpretation (to confirm):
+  These are the two diagonal key columns on a US keyboard:
+    Deck A:  [  ;  .     (same physical keys as { : >)
+    Deck B:  ]  '  /
+  Bind by PHYSICAL key (KeyboardEvent.code: BracketLeft, Semicolon,
+  Period / BracketRight, Quote, Slash) so Shift is not required and
+  non-US layouts still get the same physical positions.
+
+  "Cue" today = two buttons (CUE sets, ►CUE jumps). Proposed:
+    key       → jump to cue
+    Shift+key → set cue at current position
+
+
+------------------------------------------------------------------
+FR-003  Crossfader via the audio graph                    [?]
+------------------------------------------------------------------
+Implied by the branch name. Today the crossfader is computed in Dart
+(MixerProvider) and multiplied into each deck's volume node. Moving it
+into the Web Audio graph (a gain node per deck after the channel
+fader) keeps channel fader and crossfader independent and makes the
+audio-graph view show it. Folded into _PLANS/001 Phase 1.
+
+
+------------------------------------------------------------------
+OPEN: Rob's message ended with "i also want ..." — the rest was cut off.
+------------------------------------------------------------------

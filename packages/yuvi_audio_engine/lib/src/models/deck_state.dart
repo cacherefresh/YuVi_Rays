@@ -1,5 +1,9 @@
 import 'package:flutter/foundation.dart';
 
+import 'package:yuvi_track_metadata/yuvi_track_metadata.dart';
+
+import '../pitch_math.dart';
+
 class DeckState extends ChangeNotifier {
   final String id;
 
@@ -10,13 +14,84 @@ class DeckState extends ChangeNotifier {
   double highEQ = 0.0;
   double midEQ = 0.0;
   double lowEQ = 0.0;
-  double pitch = 0.0;
+  /// Coarse pitch, percent of speed (e.g. the pitch fader or a big knob).
+  double pitchCoarse = 0.0;
+
+  /// Fine pitch, percent of speed, added on top of [pitchCoarse].
+  double pitchFine = 0.0;
   double position = 0.0;
   double duration = 0.0;
   double cuePoint = 0.0;
   List<double> waveformData = const [];
 
   DeckState(this.id);
+
+  /// Number of hot cue slots per deck.
+  static const hotCueSlots = 4;
+
+  /// Default hot cue colours by slot (Serato's first four), as 0xRRGGBB.
+  static const defaultHotCueColors = [0xCC0000, 0xCC8800, 0x0000CC, 0xCCCC00];
+
+  /// Hot cues by slot; null = empty. Read from the file's Serato tag on
+  /// load, or set while playing. Not saved yet (plan 005).
+  List<HotCue?> hotCues = List.filled(hotCueSlots, null);
+
+  /// Replaces all hot cues. Slots beyond [hotCueSlots] are ignored.
+  void setHotCues(Map<int, HotCue> bySlot) {
+    hotCues = [for (var i = 0; i < hotCueSlots; i++) bySlot[i]];
+    notifyListeners();
+  }
+
+  void setHotCue(int index, HotCue? cue) {
+    if (index < 0 || index >= hotCueSlots || hotCues[index] == cue) return;
+    hotCues = [...hotCues]..[index] = cue;
+    notifyListeners();
+  }
+
+  /// Tempo found by the beat detector when the track loaded, or null.
+  double? detectedBpm;
+
+  /// Tempo from the file's tag (ID3 TBPM), or null.
+  double? tagBpm;
+
+  /// Prefer [tagBpm] over [detectedBpm] when both exist.
+  bool preferTagBpm = false;
+
+  /// The track's own tempo, from the preferred source, falling back to the
+  /// other one when the preferred source has none.
+  double? get baseBpm =>
+      preferTagBpm ? (tagBpm ?? detectedBpm) : (detectedBpm ?? tagBpm);
+
+  /// Tempo as it plays now: [baseBpm] × the pitch speed change.
+  double? get currentBpm {
+    final b = baseBpm;
+    return b == null ? null : b * playbackRate;
+  }
+
+  /// Sets both BPM values at once (null clears). Notifies on change.
+  void setBpm({required double? detected, required double? tag}) {
+    if (detected == detectedBpm && tag == tagBpm) return;
+    detectedBpm = detected;
+    tagBpm = tag;
+    notifyListeners();
+  }
+
+  void setDetectedBpm(double? bpm) => setBpm(detected: bpm, tag: tagBpm);
+
+  void setPreferTagBpm(bool value) {
+    if (value == preferTagBpm) return;
+    preferTagBpm = value;
+    notifyListeners();
+  }
+
+  /// Total speed change in percent: coarse + fine.
+  double get pitchPercent => pitchCoarse + pitchFine;
+
+  /// Playback-rate multiplier, e.g. 1.04 for +4%.
+  double get playbackRate => playbackRateForPercent(pitchPercent);
+
+  /// Key change in semitones at the current speed (no key lock).
+  double get pitchSemitones => semitonesForPercent(pitchPercent);
 
   void update({
     String? trackName,
@@ -26,7 +101,8 @@ class DeckState extends ChangeNotifier {
     double? highEQ,
     double? midEQ,
     double? lowEQ,
-    double? pitch,
+    double? pitchCoarse,
+    double? pitchFine,
     double? position,
     double? duration,
     double? cuePoint,
@@ -74,10 +150,17 @@ class DeckState extends ChangeNotifier {
         changed = true;
       }
     }
-    if (pitch != null) {
-      final clamped = pitch.clamp(-7.0, 7.0);
-      if (clamped != this.pitch) {
-        this.pitch = clamped;
+    if (pitchCoarse != null) {
+      final clamped = pitchCoarse.clamp(-50.0, 50.0);
+      if (clamped != this.pitchCoarse) {
+        this.pitchCoarse = clamped;
+        changed = true;
+      }
+    }
+    if (pitchFine != null) {
+      final clamped = pitchFine.clamp(-10.0, 10.0);
+      if (clamped != this.pitchFine) {
+        this.pitchFine = clamped;
         changed = true;
       }
     }

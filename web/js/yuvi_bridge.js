@@ -1,20 +1,63 @@
 'use strict';
 
 // YuVi Rays - Digital Vinyl System
-// Audio graph per deck: Player → EQ3 (Hi / Mid / Low) → Volume → Destination
+// Audio graph:
+//   per deck:  Player → EQ3 (Hi / Mid / Low) → ChannelVol → XfadeGain ─┐
+//   master:    MasterVol ◀────────────────────────────────────────────┘
+//              MasterVol → Meter
+//              MasterVol → HeadphoneVol → Destination
+//
+// HeadphoneVol is in series with master because a laptop has one stereo
+// output. When a real cue bus exists (split cue / second device), only the
+// master section below changes.
 
 (function () {
+  // Normalized 0..1 fader value → dB, with a -60 dB floor (≈ silence).
+  function faderToDb(normalized) {
+    const v = Math.max(0, Math.min(1, normalized));
+    return v <= 0.0001 ? -60 : 20 * Math.log10(v);
+  }
+
+  // Short ramp avoids zipper noise from 7-bit MIDI fader steps.
+  const RAMP_SECONDS = 0.02;
+
+  // BPM detection: web-audio-beat-detector (MIT), self-contained module build
+  // from jsDelivr, pinned. Loaded once, on demand, and preloaded at start-up.
+  const BEAT_DETECTOR_URL =
+    'https://cdn.jsdelivr.net/npm/web-audio-beat-detector@8.2.31/+esm';
+  let beatDetector = null;
+  function loadBeatDetector() {
+    if (!beatDetector) {
+      beatDetector = import(BEAT_DETECTOR_URL).catch((e) => {
+        beatDetector = null; // allow a retry on the next track
+        throw e;
+      });
+    }
+    return beatDetector;
+  }
+
   const YuViDVS = {
     decks: {},
     _cb: null,
-    // Lazily created on first initDeck call so Tone context is ready.
-    _masterMeter: null,
+    // Master section is created lazily so the Tone context is ready.
+    _master: null,
+
+    initMaster: function () {
+      if (this._master) return this._master;
+      loadBeatDetector().catch(() => {}); // warm the cache; errors surface per track
+      // smoothing=0.8 gives a natural ballistic feel matching Pioneer meters
+      const meter     = new Tone.Meter({ normalRange: false, smoothing: 0.8 });
+      const masterVol = new Tone.Volume(0);
+      const phonesVol = new Tone.Volume(0);
+      masterVol.connect(meter);       // meter reads post-master, like a Pioneer mixer
+      masterVol.connect(phonesVol);
+      phonesVol.toDestination();
+      this._master = { meter: meter, masterVol: masterVol, phonesVol: phonesVol };
+      return this._master;
+    },
 
     initDeck: function (deckId) {
-      if (!this._masterMeter) {
-        // smoothing=0.8 gives a natural ballistic feel matching Pioneer meters
-        this._masterMeter = new Tone.Meter({ normalRange: false, smoothing: 0.8 });
-      }
+      const master = this.initMaster();
       // EQ3 uses a proper MultibandSplit crossover so the three bands together
       // reconstruct the full spectrum. Killing all three → true silence.
       // Crossover points: Low 0–250 Hz, Mid 250–2500 Hz, High 2500 Hz–Nyquist.
@@ -25,18 +68,20 @@
         lowFrequency:  250,
         highFrequency: 2500,
       });
-      const vol    = new Tone.Volume(0);
+      const vol    = new Tone.Volume(faderToDb(0.8));
+      const xfade  = new Tone.Gain(1);
       const player = new Tone.Player({ loop: false });
 
       player.connect(eq3);
       eq3.connect(vol);
-      vol.toDestination();
-      vol.connect(this._masterMeter); // tap combined level for VU meter
+      vol.connect(xfade);
+      xfade.connect(master.masterVol);
 
       this.decks[deckId] = {
         player:    player,
         eq3:       eq3,
         vol:       vol,
+        xfade:     xfade,
         cuePoint:  0,
         startTime: 0,
         offset:    0,
@@ -44,7 +89,16 @@
         isPlaying: false,
         duration:  0,
         ticker:    null,
+        rate:      1,   // playback-rate multiplier (pitch)
+        loadId:    0,   // increments per load, so stale BPM results are dropped
       };
+    },
+
+    // Current playhead in track seconds. Elapsed wall time is scaled by the
+    // playback rate: at +16% pitch, 1 s of wall time plays 1.16 s of track.
+    _seconds: function (deck) {
+      if (!deck.isPlaying) return deck.offset;
+      return deck.offset + (Tone.now() - deck.startTime) * deck.rate;
     },
 
     setDartCallback: function (fn) {
@@ -66,18 +120,36 @@
       const deck = this.decks[deckId];
       if (!deck) return;
       try {
+        const loadId = ++deck.loadId;
         await deck.player.load(url);
         deck.duration = deck.player.buffer.duration;
         const waveform = this._extractWaveform(deck.player.buffer, 512);
         this._emit('loaded',   deckId, { duration: deck.duration });
         this._emit('waveform', deckId, { points: Array.from(waveform) });
+        this._detectBpm(deckId, loadId);
       } catch (e) {
         console.error('[YuViDVS] loadUrl error:', e);
         this._emit('error', deckId, { message: String(e) });
       }
     },
 
-    _extractWaveform: function (toneBuffer, numSamples) {
+    // Detects the track's tempo off the main thread and emits
+    // 'bpm' {bpm: number|null}. Searches 90-180 BPM (the library default).
+    _detectBpm: async function (deckId, loadId) {
+      const deck = this.decks[deckId];
+      try {
+        const detector = await loadBeatDetector();
+        const bpm = await detector.analyze(deck.player.buffer.get());
+        if (deck.loadId !== loadId) return; // a newer track was loaded meanwhile
+        this._emit('bpm', deckId, { bpm: bpm });
+      } catch (e) {
+        if (deck.loadId !== loadId) return;
+        console.warn('[YuViDVS] BPM detection failed:', e);
+        this._emit('bpm', deckId, { bpm: null });
+      }
+    },
+
+        _extractWaveform: function (toneBuffer, numSamples) {
       const raw  = toneBuffer.get();
       const data = raw.getChannelData(0);
       const step = Math.max(1, Math.floor(data.length / numSamples));
@@ -112,7 +184,7 @@
     pause: function (deckId) {
       const deck = this.decks[deckId];
       if (!deck || !deck.isPlaying) return;
-      deck.offset    += Tone.now() - deck.startTime;
+      deck.offset     = this._seconds(deck);
       deck.isPlaying  = false;
       deck.player.stop();
       this._stopTicker(deckId);
@@ -150,7 +222,7 @@
     setCuePoint: function (deckId) {
       const deck = this.decks[deckId];
       if (!deck) return;
-      const seconds    = deck.isPlaying ? deck.offset + (Tone.now() - deck.startTime) : deck.offset;
+      const seconds    = this._seconds(deck);
       deck.cuePoint    = Math.max(0, Math.min(seconds, deck.duration));
       const normalized = deck.duration > 0 ? deck.cuePoint / deck.duration : 0;
       this._emit('cue', deckId, { cuePoint: normalized });
@@ -167,8 +239,22 @@
       const deck = this.decks[deckId];
       if (!deck) return;
       deck._volume = Math.max(0, Math.min(1, normalized));
-      const db = deck._volume <= 0.0001 ? -60 : 20 * Math.log10(deck._volume);
-      deck.vol.volume.value = db;
+      deck.vol.volume.rampTo(faderToDb(deck._volume), RAMP_SECONDS);
+    },
+
+    // Linear gain 0..1 from the crossfader curve (computed in Dart).
+    setCrossfaderGain: function (deckId, gain) {
+      const deck = this.decks[deckId];
+      if (!deck) return;
+      deck.xfade.gain.rampTo(Math.max(0, Math.min(1, gain)), RAMP_SECONDS);
+    },
+
+    setMasterVolume: function (normalized) {
+      this.initMaster().masterVol.volume.rampTo(faderToDb(normalized), RAMP_SECONDS);
+    },
+
+    setHeadphoneVolume: function (normalized) {
+      this.initMaster().phonesVol.volume.rampTo(faderToDb(normalized), RAMP_SECONDS);
     },
 
     setEQ: function (deckId, band, value) {
@@ -194,8 +280,8 @@
     },
 
     getMasterLevel: function () {
-      if (!this._masterMeter) return -100;
-      const val = this._masterMeter.getValue();
+      if (!this._master) return -100;
+      const val = this._master.meter.getValue();
       if (typeof val === 'number') return isFinite(val) ? val : -100;
       // Stereo array — take the louder channel
       if (Array.isArray(val)) {
@@ -205,17 +291,33 @@
       return -100;
     },
 
-    setPitch: function (deckId, semitones) {
+    // Speed multiplier from the pitch controls (1.04 = +4%). Re-anchors the
+    // playhead first so position tracking stays exact across speed changes.
+    setPlaybackRate: function (deckId, rate) {
+      const deck = this.decks[deckId];
+      if (!deck || !(rate > 0)) return;
+      if (deck.isPlaying) {
+        deck.offset    = this._seconds(deck);
+        deck.startTime = Tone.now();
+      }
+      deck.rate = rate;
+      deck.player.playbackRate = rate;
+    },
+
+    // Sets the cue at a given playhead (0..1), e.g. where a pad was first pressed.
+    setCuePointAt: function (deckId, normalized) {
       const deck = this.decks[deckId];
       if (!deck) return;
-      deck.player.playbackRate = Math.pow(2, semitones / 12);
+      const n = Math.max(0, Math.min(1, normalized));
+      deck.cuePoint = n * deck.duration;
+      this._emit('cue', deckId, { cuePoint: n });
     },
 
     getPosition: function (deckId) {
       const deck = this.decks[deckId];
       if (!deck) return 0;
       if (!deck.isPlaying) return deck.duration > 0 ? deck.offset / deck.duration : 0;
-      const s = deck.offset + (Tone.now() - deck.startTime);
+      const s = this._seconds(deck);
       return deck.duration > 0 ? Math.min(s / deck.duration, 1) : 0;
     },
 
@@ -224,7 +326,7 @@
       this._stopTicker(deckId);
       deck.ticker = setInterval(() => {
         if (!deck.isPlaying) return;
-        const seconds  = deck.offset + (Tone.now() - deck.startTime);
+        const seconds  = this._seconds(deck);
         const position = deck.duration > 0 ? Math.min(seconds / deck.duration, 1) : 0;
         this._emit('position', deckId, { position: position, seconds: seconds });
         if (seconds >= deck.duration && deck.duration > 0) {

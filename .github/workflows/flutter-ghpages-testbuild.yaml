@@ -9,7 +9,10 @@ permissions:
   contents: read
 
 jobs:
-  build:
+  # Make this check required in GitHub (Settings → Branches → sanctuary →
+  # "Require status checks to pass") so a PR can't merge when tests fail.
+  test-and-build:
+    name: Test and build
     runs-on: ubuntu-latest
 
     steps:
@@ -26,6 +29,28 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
         # because it's a mono repo structure... r.c.
+        working-directory: ./
+
+      # Unit tests run on the Dart VM: no browser, audio or MIDI hardware.
+      # Includes the fake MIDI runner (test/midi_fake_runner_test.dart).
+      - name: Test app
+        run: flutter test
+        working-directory: ./
+
+      - name: Test packages
+        run: |
+          for pkg in packages/*/; do
+            if [ -d "$pkg/test" ]; then
+              echo "::group::flutter test $pkg"
+              # Flutter packages use flutter test; pure-Dart packages use dart test.
+              if grep -q "sdk: flutter" "$pkg/pubspec.yaml"; then
+                (cd "$pkg" && flutter test) || exit 1
+              else
+                (cd "$pkg" && dart pub get && dart test) || exit 1
+              fi
+              echo "::endgroup::"
+            fi
+          done
         working-directory: ./
 
       - name: Build Flutter Web (test only — no deploy)

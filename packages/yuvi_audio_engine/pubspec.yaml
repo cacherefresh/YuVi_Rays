@@ -10,6 +10,8 @@ dependencies:
   flutter:
     sdk: flutter
   web: ^1.1.0
+  yuvi_track_metadata:
+    path: ../yuvi_track_metadata
 
 dev_dependencies:
   flutter_test:

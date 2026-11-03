@@ -1,0 +1,21 @@
+name: yuvi_input
+description: >-
+  YuVi Rays input layer — turns computer-keyboard and Web MIDI controller
+  events into typed mixer commands. No audio dependency; reusable in any
+  Flutter web music app.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.11.4
+
+dependencies:
+  flutter:
+    sdk: flutter
+  web: ^1.1.0
+  yaml: ^3.1.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
