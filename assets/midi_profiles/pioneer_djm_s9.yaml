@@ -1,0 +1,12 @@
+# Pioneer DJM-S9, used only as a MIDI fader surface:
+# crossfader and channel faders 1 and 2.
+# CC numbers and channels are placeholders. NOT verified on hardware.
+
+name: Pioneer DJM-S9 (faders only)
+device_name_contains: [DJM-S9]
+verified: false
+
+knobs:
+  - { cc: 19, channel: 1, action: channelVolume, deck: A }   # channel fader 1
+  - { cc: 19, channel: 2, action: channelVolume, deck: B }   # channel fader 2
+  - { cc: 31, channel: 7, action: crossfader }                # crossfader

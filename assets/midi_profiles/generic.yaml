@@ -1,0 +1,24 @@
+# Generic fallback, used for any MIDI device no other profile matches.
+# Numbers follow the Akai MPK Mini mk3 factory defaults (knobs CC 70-77,
+# pads notes 36-43), which many 8-knob, 8-pad controllers share.
+# NOT verified on hardware. Use Settings → Last MIDI message to check.
+
+name: Generic (8 knobs, 8 pads)
+device_name_contains: []
+verified: false
+
+knobs:
+  - { cc: 70, action: masterVolume }                 # knob 1
+  - { cc: 71, action: channelVolume, deck: A }       # knob 2
+  - { cc: 72, action: channelVolume, deck: B }       # knob 3
+  - { cc: 73, action: headphoneVolume }              # knob 4
+
+pads:
+  - { note: 36, deck: A, on_press: togglePlay }      # pad 1
+  - { note: 37, deck: A, on_press: jumpToCue }       # pad 2
+  - { note: 38, deck: A, on_press: stop }            # pad 3
+  - { note: 39, deck: A, on_press: setCue }          # pad 4
+  - { note: 40, deck: B, on_press: togglePlay }      # pad 5
+  - { note: 41, deck: B, on_press: jumpToCue }       # pad 6
+  - { note: 42, deck: B, on_press: stop }            # pad 7
+  - { note: 43, deck: B, on_press: setCue }          # pad 8

@@ -1,4 +1,7 @@
-assets/royalty_free_audio/
+# Local audio for the song menu: never committed (licensing). The empty
+# .gitkeep keeps the folder in git, because pubspec.yaml bundles it.
+assets/royalty_free_audio/*
+!assets/royalty_free_audio/.gitkeep
 
 # Miscellaneous
 
@@ -25,15 +28,20 @@ migrate_working_dir/
 # VS Code which you may wish to be included in version control, so this line
 # is commented out by default.
 #.vscode/
+# Ignored here: it holds local paths with the user name.
+.vscode/
 
 # Flutter/Dart/Pub related
+# Generated per machine, with local paths that include the user name.
+**/Flutter/ephemeral/
 **/doc/api/
 **/ios/Flutter/.last_build_id
 .dart_tool/
 .flutter-plugins-dependencies
 .pub-cache/
 .pub/
-/build/
+# Any build folder, including packages/*/build (test caches, native assets).
+build/
 /coverage/
 
 # Symbolication related

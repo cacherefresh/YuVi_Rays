@@ -1,7 +1,6 @@
-import 'dart:js_interop';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:web/web.dart' as web;
+import 'package:flutter/services.dart';
 import 'package:yuvi_audio_engine/yuvi_audio_engine.dart';
 import 'package:yuvi_controls/yuvi_controls.dart';
 import 'package:yuvi_waveform/yuvi_waveform.dart';
@@ -59,17 +58,15 @@ class _DeckWidgetState extends State<DeckWidget> {
     final bytes = file.bytes;
     if (bytes == null) return;
 
-    final blobParts = <JSAny>[bytes.toJS].toJS;
-    final blob = web.Blob(blobParts, web.BlobPropertyBag(type: 'audio/mpeg'));
-    final url = web.URL.createObjectURL(blob);
-    widget.controller.loadUrl(url, trackName: file.name);
+    widget.controller.loadBytes(bytes, trackName: file.name);
   }
 
   Future<void> _loadPreset(PresetTrack track) async {
-    widget.controller.loadUrl(
-      'assets/royalty_free_audio/${track.file}',
-      trackName: track.name,
-    );
+    // Load bundled tracks as bytes too, so their tags are read the same way
+    // as picked files.
+    final data = await rootBundle.load('assets/royalty_free_audio/${track.file}');
+    if (!mounted) return;
+    widget.controller.loadBytes(data.buffer.asUint8List(), trackName: track.name);
   }
 
   @override
@@ -132,8 +129,11 @@ class _DeckWidgetState extends State<DeckWidget> {
 
           // ── Pitch fader (horizontal, left → right) ─────────────────
           PitchFaderWidget(
-            value: state.pitch,
-            onChanged: widget.controller.setPitch,
+            value: state.pitchCoarse,
+            totalPercent: state.pitchPercent,
+            showTempo: true,
+            tempo: state.currentBpm,
+            onChanged: widget.controller.setPitchCoarse,
             color: color.withValues(alpha: 0.75),
           ),
           const SizedBox(height: 8),
@@ -149,6 +149,18 @@ class _DeckWidgetState extends State<DeckWidget> {
               onSetCue: widget.controller.setCuePoint,
               onJumpCue: widget.controller.jumpToCue,
               accentColor: color,
+            ),
+          ),
+          const SizedBox(height: 6),
+
+          // ── Hot cues ───────────────────────────────────────────────
+          ListenableBuilder(
+            listenable: state,
+            builder: (_, _) => HotCuePads(
+              cues: state.hotCues,
+              enabled: state.isLoaded,
+              onTrigger: widget.controller.triggerHotCue,
+              onClear: widget.controller.clearHotCue,
             ),
           ),
         ],

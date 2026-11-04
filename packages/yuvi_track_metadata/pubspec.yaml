@@ -1,0 +1,13 @@
+name: yuvi_track_metadata
+description: >-
+  Reads track metadata from audio file bytes: ID3v2 tags (BPM now; Serato
+  cue points later, see plan 002). Pure Dart with no Flutter or browser
+  dependency, so it's reusable anywhere.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.11.4
+
+dev_dependencies:
+  test: ^1.25.0

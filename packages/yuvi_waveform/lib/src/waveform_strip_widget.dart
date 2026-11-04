@@ -43,6 +43,15 @@ class WaveformStripWidget extends StatelessWidget {
             playedColor: accentColor,
             unplayedColor: accentColor.withValues(alpha: 0.25),
             cueColor: const Color(0xFFFF9500),
+            hotCues: [
+              for (final (i, c) in state.hotCues.indexed)
+                if (c != null && state.duration > 0)
+                  (
+                    slot: i + 1,
+                    position: c.seconds / state.duration,
+                    color: Color(0xFF000000 | (c.colorRgb ?? DeckState.defaultHotCueColors[i])),
+                  ),
+            ],
           ),
         ),
       ),
@@ -60,7 +69,11 @@ class _WaveformStripPainter extends CustomPainter {
     required this.playedColor,
     required this.unplayedColor,
     required this.cueColor,
+    this.hotCues = const [],
   });
+
+  /// Hot cue markers: slot number (1-4), position (0..1) and colour.
+  final List<({int slot, double position, Color color})> hotCues;
 
   final List<double> waveformData;
   final double position;
@@ -116,6 +129,25 @@ class _WaveformStripPainter extends CustomPainter {
       Paint()..color = Colors.white..strokeWidth = 1.5,
     );
 
+    // Hot cue markers: a line plus a numbered flag at the bottom.
+    for (final h in hotCues) {
+      final rel = (h.position * n - centerSample) / (halfWindowSamples * 2);
+      final px = (rel + 0.5) * size.width;
+      if (px < 0 || px > size.width) continue;
+      canvas.drawLine(Offset(px, 0), Offset(px, size.height),
+          Paint()..color = h.color..strokeWidth = 1.5);
+      final flag = Rect.fromLTWH(px, size.height - 12, 11, 12);
+      canvas.drawRect(flag, Paint()..color = h.color);
+      final label = TextPainter(
+        text: TextSpan(
+          text: '${h.slot}',
+          style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 9, fontWeight: FontWeight.w700),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      label.paint(canvas, Offset(px + (11 - label.width) / 2, size.height - 12 + (12 - label.height) / 2));
+    }
+
     // Cue marker
     if (cuePoint > 0) {
       final cueSampleF = cuePoint * n;
@@ -158,6 +190,18 @@ class _WaveformStripPainter extends CustomPainter {
   bool shouldRepaint(_WaveformStripPainter old) {
     return old.position != position ||
         old.cuePoint != cuePoint ||
+        old.hotCues.length != hotCues.length ||
+        !_sameHotCues(old.hotCues, hotCues) ||
         old.waveformData != waveformData;
   }
+}
+
+bool _sameHotCues(
+  List<({int slot, double position, Color color})> a,
+  List<({int slot, double position, Color color})> b,
+) {
+  for (var i = 0; i < a.length && i < b.length; i++) {
+    if (a[i] != b[i]) return false;
+  }
+  return true;
 }

@@ -1,0 +1,42 @@
+# A fake MIDI session for the Akai MPK Mini Mk II, replayed by
+# test/midi_fake_runner_test.dart.
+#
+# source: synthesized. The note and CC numbers come from the controller's
+# own program dump (program_dump.txt). Replace with a real capture from
+# tool/capture_midi_session.sh when available. The format is the same.
+#
+# t = milliseconds since the start. bytes = raw MIDI bytes:
+#   144 = note on ch 1, 128 = note off ch 1, 176 = control change ch 1.
+
+device: MPK Mini Mk II
+source: synthesized
+events:
+  # Pad 1 (note 44): Deck A play.
+  - { t: 0,     bytes: [144, 44, 100] }
+  - { t: 120,   bytes: [128, 44, 0] }
+
+  # K2 (CC 2): coarse pitch. The knob starts at its centre (0%), which
+  # matches the deck, so pick-up engages at once. Turn up to CC 80.
+  - { t: 1000,  bytes: [176, 2, 64] }
+  - { t: 1050,  bytes: [176, 2, 70] }
+  - { t: 1100,  bytes: [176, 2, 75] }
+  - { t: 1150,  bytes: [176, 2, 80] }
+
+  # K3 (CC 3): fine pitch, centre then slightly down.
+  - { t: 1500,  bytes: [176, 3, 64] }
+  - { t: 1550,  bytes: [176, 3, 48] }
+
+  # Pad 2 (note 45) held 1.5 s: sets the cue where the press began (t = 5000).
+  - { t: 5000,  bytes: [144, 45, 90] }
+  - { t: 6500,  bytes: [128, 45, 0] }
+
+  # Pad 1: pause.
+  - { t: 8000,  bytes: [144, 44, 100] }
+  - { t: 8100,  bytes: [128, 44, 0] }
+
+  # Pad 2 tapped (released after 200 ms): play from the cue.
+  - { t: 9000,  bytes: [144, 45, 90] }
+  - { t: 9200,  bytes: [128, 45, 0] }
+
+  # K1 (CC 1): Deck A volume to full.
+  - { t: 10000, bytes: [176, 1, 127] }

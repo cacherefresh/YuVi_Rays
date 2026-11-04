@@ -1,0 +1,5 @@
+# SysEx program dump read from Rob's Akai MPK Mini Mk II on 2026-11-03.
+# Request sent: F0 47 00 26 66 00 01 00 F7  (program 0 = current settings)
+# Captured through Chrome's Web MIDI with tool/ws_rpc.dart. See
+# _DEVELOPER_NOTES/_NON_HUMAN_NOTES/debugging_midi_mapping.md.
+f0 47 00 26 67 00 6d 00 00 00 04 00 00 04 00 00 00 03 00 78 00 00 00 01 02 01 01 2c 00 14 01 2d 01 15 01 2e 02 16 01 2f 03 17 01 30 04 18 01 31 05 19 01 32 06 1a 01 33 07 1b 01 20 08 1c 01 21 09 1d 01 22 0a 1e 01 23 0b 1f 01 24 0c 20 01 25 0d 21 01 26 0e 22 01 27 0f 23 01 01 00 7f 02 00 7f 03 00 7f 04 00 7f 05 00 7f 06 00 7f 07 00 7f 08 00 7f 0c f7

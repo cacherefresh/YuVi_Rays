@@ -1,22 +1,22 @@
 import 'dart:convert';
 import 'dart:js_interop';
-import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:yuvi_audio_engine/yuvi_audio_engine.dart';
 
-class MixerProvider extends ChangeNotifier {
+class MixerProvider extends ChangeNotifier implements MixerControls {
   final DeckState stateA = DeckState('A');
   final DeckState stateB = DeckState('B');
+  final MasterState master = MasterState();
 
   late final DeckAudioController deckA;
   late final DeckAudioController deckB;
-
-  double crossfader = 0.5;
+  late final MasterAudioController masterAudio;
 
   MixerProvider() {
     deckA = DeckAudioController(stateA);
     deckB = DeckAudioController(stateB);
+    masterAudio = MasterAudioController(master, left: deckA, right: deckB);
 
     // Single global callback dispatches to the right deck controller
     yuViDVS.setDartCallback(
@@ -27,32 +27,49 @@ class MixerProvider extends ChangeNotifier {
     );
   }
 
+  /// The deck controller for [deckId], or null if there is no such deck.
+  @override
+  DeckAudioController? deck(String deckId) => switch (deckId) {
+        'A' => deckA,
+        'B' => deckB,
+        _ => null,
+      };
+
+  @override
+  double get crossfader => master.crossfader;
+  @override
+  double get masterVolume => master.masterVolume;
+  @override
+  double get headphoneVolume => master.headphoneVolume;
+
   void _handleJsEvent(String jsonStr) {
     try {
       final map = jsonDecode(jsonStr) as Map<String, dynamic>;
       final event = map['event'] as String? ?? '';
       final deckId = map['deckId'] as String? ?? '';
       final data = (map['data'] as Map<String, dynamic>?) ?? {};
-      switch (deckId) {
-        case 'A':
-          deckA.handleEvent(event, data);
-        case 'B':
-          deckB.handleEvent(event, data);
-      }
+      deck(deckId)?.handleEvent(event, data);
     } catch (e) {
       debugPrint('[MixerProvider] event parse error: $e');
     }
   }
 
+  @override
   void setCrossfader(double value) {
-    crossfader = value.clamp(0.0, 1.0);
-    // Equal-power crossfade curve.
-    // Delegate through the controllers so their _crossGain is updated —
-    // that way subsequent volume-fader moves also compose with this gain.
-    final aGain = math.cos(crossfader * math.pi / 2);
-    final bGain = math.cos((1.0 - crossfader) * math.pi / 2);
-    deckA.applyCrossfaderGain(aGain);
-    deckB.applyCrossfaderGain(bGain);
+    masterAudio.setCrossfader(value);
     notifyListeners();
   }
+
+  /// Applies the "prefer tag BPM" setting to every deck.
+  void setPreferTagBpm(bool value) {
+    for (final s in [stateA, stateB]) {
+      s.setPreferTagBpm(value);
+    }
+  }
+
+  @override
+  void setMasterVolume(double value) => masterAudio.setMasterVolume(value);
+
+  @override
+  void setHeadphoneVolume(double value) => masterAudio.setHeadphoneVolume(value);
 }

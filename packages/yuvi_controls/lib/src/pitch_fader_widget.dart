@@ -1,21 +1,43 @@
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:yuvi_audio_engine/mixer_contracts.dart';
 
-/// Horizontal pitch/BPM adjust fader.
-/// [value] is in semitones (clamped to ±[maxSemitones]).
-/// Displays a live BPM-rate percentage next to the label.
+/// Horizontal pitch fader, in percent of speed (like a turntable).
+///
+/// [value] is the coarse pitch this fader controls, clamped to ±[range]%.
+/// The readout shows [totalPercent] (coarse + any fine pitch) in both
+/// percent and semitones, e.g. `+4.37%  +0.74 st`.
 class PitchFaderWidget extends StatefulWidget {
   const PitchFaderWidget({
     super.key,
     required this.value,
     required this.onChanged,
-    this.maxSemitones = 7.0,
+    double? totalPercent,
+    this.range = 16.0,
     this.color = const Color(0xFF00D4AA),
-  });
+    this.showTempo = false,
+    this.tempo,
+  }) : totalPercent = totalPercent ?? value;
+
+  /// Show the tempo readout line above the pitch label.
+  final bool showTempo;
+
+  /// Tempo in BPM as currently playing, or null when unknown (`---.--`).
+  final double? tempo;
+
+  /// Tempo readout colour: the same purple on every deck, at 75% opacity.
+  static const tempoColor = Color(0xBFB388FF);
+
+  /// Formats a BPM as 3 digits and 2 decimals: `124.35`, `098.20`.
+  /// Null shows `---.--`.
+  static String formatTempo(double? bpm) {
+    if (bpm == null || bpm.isNaN || bpm.isInfinite) return '---.--';
+    return bpm.toStringAsFixed(2).padLeft(6, '0');
+  }
 
   final double value;
   final ValueChanged<double> onChanged;
-  final double maxSemitones;
+  final double totalPercent;
+  final double range;
   final Color color;
 
   @override
@@ -26,25 +48,32 @@ class _PitchFaderWidgetState extends State<PitchFaderWidget> {
   double _startX = 0;
   double _startValue = 0;
 
-  // 2^(s/12) gives the playback-rate multiplier for s semitones.
-  // BPM offset % = (rate − 1) × 100.
-  static String _bpmPct(double semitones) {
-    final rate = math.pow(2.0, semitones / 12.0) as double;
-    final pct = (rate - 1.0) * 100.0;
-    final sign = pct >= 0 ? '+' : '';
-    return '$sign${pct.toStringAsFixed(2)}%';
-  }
+  static String _signed(double v, int digits) =>
+      '${v >= 0 ? '+' : ''}${v.toStringAsFixed(digits)}';
 
   @override
   Widget build(BuildContext context) {
     final normalized =
-        (widget.value + widget.maxSemitones) / (2 * widget.maxSemitones);
+        ((widget.value.clamp(-widget.range, widget.range) + widget.range) /
+            (2 * widget.range));
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Label row: PITCH  +00.00%  [RST]
+        if (widget.showTempo)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 2),
+            child: Text(
+              PitchFaderWidget.formatTempo(widget.tempo),
+              style: const TextStyle(
+                color: PitchFaderWidget.tempoColor,
+                fontSize: 10, // same font as the semitone readout
+                fontFamily: 'monospace',
+              ),
+            ),
+          ),
+        // Label row: PITCH  +00.00%  +0.00 st  [RST]
         Row(
           children: [
             Text(
@@ -58,11 +87,20 @@ class _PitchFaderWidgetState extends State<PitchFaderWidget> {
             ),
             const SizedBox(width: 6),
             Text(
-              _bpmPct(widget.value),
+              '${_signed(widget.totalPercent, 2)}%',
               style: TextStyle(
                 color: widget.color,
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
+                fontFamily: 'monospace',
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              '${_signed(semitonesForPercent(widget.totalPercent), 2)} st',
+              style: TextStyle(
+                color: widget.color.withValues(alpha: 0.7),
+                fontSize: 10,
                 fontFamily: 'monospace',
               ),
             ),
@@ -92,10 +130,8 @@ class _PitchFaderWidgetState extends State<PitchFaderWidget> {
             if (box == null) return;
             // Normalize drag delta against the full widget width.
             final delta = (d.globalPosition.dx - _startX) / box.size.width;
-            final newVal = _startValue + delta * 2 * widget.maxSemitones;
-            widget.onChanged(
-              newVal.clamp(-widget.maxSemitones, widget.maxSemitones),
-            );
+            final newVal = _startValue + delta * 2 * widget.range;
+            widget.onChanged(newVal.clamp(-widget.range, widget.range));
           },
           child: SizedBox(
             height: 28,

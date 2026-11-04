@@ -1,0 +1,22 @@
+# Akai MPD226: 16 pads (1-8 used), 4 faders.
+# Fader CC numbers are placeholders. NOT verified on hardware.
+
+name: Akai MPD226
+device_name_contains: [MPD226]
+verified: false
+
+knobs:
+  - { cc: 12, action: masterVolume }                 # fader 1
+  - { cc: 13, action: channelVolume, deck: A }       # fader 2
+  - { cc: 14, action: channelVolume, deck: B }       # fader 3
+  - { cc: 15, action: headphoneVolume }              # fader 4
+
+pads:
+  - { note: 36, deck: A, on_press: togglePlay }
+  - { note: 37, deck: A, on_press: jumpToCue }
+  - { note: 38, deck: A, on_press: stop }
+  - { note: 39, deck: A, on_press: setCue }
+  - { note: 40, deck: B, on_press: togglePlay }
+  - { note: 41, deck: B, on_press: jumpToCue }
+  - { note: 42, deck: B, on_press: stop }
+  - { note: 43, deck: B, on_press: setCue }

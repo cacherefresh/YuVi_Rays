@@ -1,12 +1,14 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:yuvi_audio_engine/yuvi_audio_engine.dart';
 import 'package:yuvi_controls/yuvi_controls.dart';
 import 'package:yuvi_deck/yuvi_deck.dart';
 
 import '../providers/mixer_provider.dart';
+import '../settings/app_settings.dart';
+import '../settings/midi_hint_dialog.dart';
+import '../settings/settings_dialog.dart';
 
 class MixerScreen extends StatefulWidget {
   const MixerScreen({super.key});
@@ -17,34 +19,43 @@ class MixerScreen extends StatefulWidget {
 
 class _MixerScreenState extends State<MixerScreen> {
   List<PresetTrack> _presets = const [];
-  bool _manifestLoaded = false;
+  bool _presetsLoaded = false;
 
   // Use didChangeDependencies (not initState) so DefaultAssetBundle.of(context)
   // is guaranteed to be available. The guard flag prevents repeated loads.
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (!_manifestLoaded) {
-      _manifestLoaded = true;
-      _loadManifest();
+    if (!_presetsLoaded) {
+      _presetsLoaded = true;
+      _loadPresets();
+      // First visit only: point people at Settings for MIDI controllers.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) maybeShowMidiHint(context, context.read<AppSettings>());
+      });
     }
   }
 
-  Future<void> _loadManifest() async {
+  /// Lists every audio file bundled from assets/royalty_free_audio/, using
+  /// Flutter's own asset list. No hand-kept manifest: drop a file in the
+  /// folder, rebuild, and it appears. The name shown is the file name.
+  Future<void> _loadPresets() async {
+    const dir = 'assets/royalty_free_audio/';
+    final audio = RegExp(r'\.(mp3|m4a|aac|wav|ogg|flac)$', caseSensitive: false);
     try {
-      final bundle = DefaultAssetBundle.of(context);
-      final raw = await bundle.loadString('assets/royalty_free_audio/manifest.json');
-      final json = jsonDecode(raw) as Map<String, dynamic>;
-      final tracks = (json['tracks'] as List? ?? [])
-          .map((t) => PresetTrack(
-                name: t['name'] as String,
-                file: t['file'] as String,
-              ))
-          .toList();
-      // Guard against the widget being disposed before the Future completes.
+      final manifest = await AssetManifest.loadFromAssetBundle(DefaultAssetBundle.of(context));
+      final files = manifest
+          .listAssets()
+          .where((k) => k.startsWith(dir) && audio.hasMatch(k))
+          .map((k) => k.substring(dir.length))
+          .toList()
+        ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+      final tracks = [
+        for (final f in files) PresetTrack(name: f.replaceAll(audio, ''), file: f),
+      ];
       if (mounted) setState(() => _presets = tracks);
-    } catch (_) {
-      // No manifest or empty — silently ignore
+    } catch (e) {
+      debugPrint('[MixerScreen] could not list bundled audio: $e');
     }
   }
 
@@ -91,6 +102,12 @@ class _MixerScreenState extends State<MixerScreen> {
                   'Web Audio API  •  Tone.js',
                   style: const TextStyle(color: Color(0xFF636366), fontSize: 11),
                 ),
+                const SizedBox(width: 8),
+                IconButton(
+                  tooltip: 'Settings',
+                  icon: const Icon(Icons.settings, color: Color(0xFF8E8E93), size: 20),
+                  onPressed: () => showSettingsDialog(context),
+                ),
               ],
             ),
           ),
@@ -114,13 +131,8 @@ class _MixerScreenState extends State<MixerScreen> {
                     ),
                   ),
                   const SizedBox(width: 6),
-                  // ── Master VU meter ──────────────────────────────────
-                  SizedBox(
-                    width: 44,
-                    child: VuMeterWidget(
-                      levelProvider: () => yuViDVS.getMasterLevel(),
-                    ),
-                  ),
+                  // ── Master section: VU meter, master fader, headphones ─
+                  _MasterSection(mixer: mixer),
                   const SizedBox(width: 6),
                   Expanded(
                     child: DeckWidget(
@@ -145,9 +157,67 @@ class _MixerScreenState extends State<MixerScreen> {
           AudioGraphWidget(
             deckA: mixer.stateA,
             deckB: mixer.stateB,
+            master: mixer.master,
           ),
         ],
       ),
+    );
+  }
+}
+
+class _MasterSection extends StatelessWidget {
+  const _MasterSection({required this.mixer});
+
+  final MixerProvider mixer;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: mixer.master,
+      builder: (context, _) {
+        final m = mixer.master;
+        return SizedBox(
+          width: 92,
+          child: Column(
+            children: [
+              Expanded(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    SizedBox(
+                      width: 44,
+                      child: VuMeterWidget(
+                        levelProvider: () => yuViDVS.getMasterLevel(),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Center(
+                        child: FaderWidget(
+                          value: m.masterVolume,
+                          onChanged: mixer.setMasterVolume,
+                          color: Colors.white,
+                          label: 'MST',
+                          width: 24,
+                          height: 140,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 6),
+              KnobWidget(
+                label: 'PHONES',
+                value: m.headphoneVolume,
+                onChanged: mixer.setHeadphoneVolume,
+                color: Colors.white,
+                size: 34,
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

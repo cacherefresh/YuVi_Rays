@@ -10,10 +10,15 @@ class AudioGraphWidget extends StatefulWidget {
     super.key,
     required this.deckA,
     required this.deckB,
+    this.master,
   });
 
   final DeckState deckA;
   final DeckState deckB;
+
+  /// Optional master section. When given, the graph also shows the
+  /// crossfader, master and headphone nodes.
+  final MasterState? master;
 
   @override
   State<AudioGraphWidget> createState() => _AudioGraphWidgetState();
@@ -27,6 +32,7 @@ class _AudioGraphWidgetState extends State<AudioGraphWidget> {
     super.initState();
     widget.deckA.addListener(_rebuild);
     widget.deckB.addListener(_rebuild);
+    widget.master?.addListener(_rebuild);
   }
 
   @override
@@ -40,12 +46,17 @@ class _AudioGraphWidgetState extends State<AudioGraphWidget> {
       old.deckB.removeListener(_rebuild);
       widget.deckB.addListener(_rebuild);
     }
+    if (old.master != widget.master) {
+      old.master?.removeListener(_rebuild);
+      widget.master?.addListener(_rebuild);
+    }
   }
 
   @override
   void dispose() {
     widget.deckA.removeListener(_rebuild);
     widget.deckB.removeListener(_rebuild);
+    widget.master?.removeListener(_rebuild);
     super.dispose();
   }
 
@@ -58,21 +69,59 @@ class _AudioGraphWidgetState extends State<AudioGraphWidget> {
         border: Border(top: BorderSide(color: Color(0xFF3A3A3C))),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          _DeckChain(deck: widget.deckA, color: const Color(0xFF00D4AA), label: 'A'),
-          const SizedBox(width: 8),
-          const _Arrow(),
-          const SizedBox(width: 8),
-          const _Node(label: 'MASTER', color: Colors.white, bold: true),
-          const SizedBox(width: 8),
-          const _Arrow(reverse: true),
-          const SizedBox(width: 8),
-          _DeckChain(deck: widget.deckB, color: const Color(0xFFFF9500), label: 'B', reverse: true),
-        ],
+      // Scale down instead of overflowing on narrow windows.
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            _DeckChain(
+              deck: widget.deckA,
+              color: const Color(0xFF00D4AA),
+              label: 'A',
+              xfadeGain: _xfade?.left,
+            ),
+            const SizedBox(width: 8),
+            const _Arrow(),
+            const SizedBox(width: 8),
+            _masterNodes(),
+            const SizedBox(width: 8),
+            const _Arrow(reverse: true),
+            const SizedBox(width: 8),
+            _DeckChain(
+              deck: widget.deckB,
+              color: const Color(0xFFFF9500),
+              label: 'B',
+              reverse: true,
+              xfadeGain: _xfade?.right,
+            ),
+          ],
+        ),
       ),
+    );
+  }
+}
+
+extension on _AudioGraphWidgetState {
+  CrossfaderGains? get _xfade {
+    final m = widget.master;
+    return m == null ? null : equalPowerCrossfade(m.crossfader);
+  }
+
+  Widget _masterNodes() {
+    final m = widget.master;
+    if (m == null) {
+      return const _Node(label: 'MASTER', color: Colors.white, bold: true);
+    }
+    // Headphones sit after master on the one laptop output (see plan 001).
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _Node(label: 'MASTER', color: Colors.white, bold: true, value: _DeckChain._volDb(m.masterVolume)),
+        const Text('▼', style: TextStyle(color: Color(0xFF636366), fontSize: 8)),
+        _Node(label: 'PHONES ► OUT', color: Colors.white, value: _DeckChain._volDb(m.headphoneVolume)),
+      ],
     );
   }
 }
@@ -83,12 +132,16 @@ class _DeckChain extends StatelessWidget {
     required this.color,
     required this.label,
     this.reverse = false,
+    this.xfadeGain,
   });
 
   final DeckState deck;
   final Color color;
   final String label;
   final bool reverse;
+
+  /// Linear crossfader gain for this deck, or null to hide the node.
+  final double? xfadeGain;
 
   @override
   Widget build(BuildContext context) {
@@ -99,6 +152,8 @@ class _DeckChain extends StatelessWidget {
         value: deck.isPlaying ? '▶' : (deck.isLoaded ? '■' : '○'),
       ),
       const _Arrow(),
+      _Node(label: 'PITCH', color: color, value: _pitch(deck)),
+      const _Arrow(),
       _Node(label: 'HI',  color: color, value: _eqDb(deck.highEQ)),
       const _Arrow(),
       _Node(label: 'MID', color: color, value: _eqDb(deck.midEQ)),
@@ -106,6 +161,10 @@ class _DeckChain extends StatelessWidget {
       _Node(label: 'LOW', color: color, value: _eqDb(deck.lowEQ)),
       const _Arrow(),
       _Node(label: 'VOL', color: color, value: _volDb(deck.volume)),
+      if (xfadeGain != null) ...[
+        const _Arrow(),
+        _Node(label: 'X-FADE', color: color, value: _volDb(xfadeGain!)),
+      ],
     ];
     return Row(children: reverse ? nodes.reversed.toList() : nodes);
   }
@@ -120,6 +179,12 @@ class _DeckChain extends StatelessWidget {
     }
     final db = (v * 6).round();
     return db == 0 ? '0dB' : '+${db}dB';
+  }
+
+  /// Pitch label in both units, e.g. `+4.4% +0.74st`.
+  static String _pitch(DeckState d) {
+    String signed(double v, int n) => '${v >= 0 ? '+' : ''}${v.toStringAsFixed(n)}';
+    return '${signed(d.pitchPercent, 1)}% ${signed(d.pitchSemitones, 2)}st';
   }
 
   /// Converts normalised volume (0..1) to a dB label.
