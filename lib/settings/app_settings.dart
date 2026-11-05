@@ -9,6 +9,32 @@ class AppSettings extends ChangeNotifier {
     _preferTagBpm = _read(_preferTagBpmKey) == 'true';
     _headphoneDeviceId = _read(_phonesIdKey);
     _headphoneDeviceName = _read(_phonesNameKey);
+    _masterDeviceId = _read(_masterIdKey);
+    _masterDeviceName = _read(_masterNameKey);
+  }
+
+  static const _masterIdKey = 'yuvi.settings.masterDeviceId';
+  static const _masterNameKey = 'yuvi.settings.masterDeviceName';
+  String? _masterDeviceId;
+  String? _masterDeviceName;
+
+  /// The master (speakers) output device chosen last time, or null for the
+  /// system default.
+  String? get masterDeviceId => _masterDeviceId;
+  String? get masterDeviceName => _masterDeviceName;
+
+  void rememberMasterDevice(String? id, String? name) {
+    if (id == _masterDeviceId && name == _masterDeviceName) return;
+    _masterDeviceId = id;
+    _masterDeviceName = name;
+    if (id == null) {
+      _remove(_masterIdKey);
+      _remove(_masterNameKey);
+    } else {
+      _write(_masterIdKey, id);
+      _write(_masterNameKey, name ?? '');
+    }
+    notifyListeners();
   }
 
   static const _phonesIdKey = 'yuvi.settings.headphoneDeviceId';

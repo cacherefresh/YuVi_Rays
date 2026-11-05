@@ -1,4 +1,4 @@
-/// Choosing where the headphone cue mix plays.
+/// Choosing where the master (speakers) and the headphone cue mix play.
 ///
 /// Device choice is setup, not mixing, so it is separate from
 /// [MixerControls]. Pure Dart: the browser implementation is
@@ -66,10 +66,24 @@ final class OutputDevicesFailed extends OutputDeviceList {
   final String reason;
 }
 
-/// Lists output devices and sends the headphone mix to one of them.
-/// Notifies listeners when the status or the device list changes.
+/// Lists output devices, and sends the master and the headphone mix to them.
+/// Notifies listeners when a status or the device list changes.
 abstract interface class AudioOutputs implements Listenable {
+  /// The headphone output can be sent to a device.
   bool get supported;
+
+  /// The master output can be moved off the system default device.
+  bool get masterSupported;
+
+  /// The master's device, or null for the system default.
+  String? get masterDeviceId;
+  String? get masterDeviceName;
+
+  /// Why the last master device change failed, or null.
+  String? get masterError;
+
+  /// Sends the master to the device; null = the system default.
+  Future<void> setMasterDevice(AudioOutputDevice? device);
 
   HeadphoneStatus get status;
 

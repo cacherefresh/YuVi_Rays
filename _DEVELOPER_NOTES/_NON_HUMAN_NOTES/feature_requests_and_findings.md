@@ -303,3 +303,4 @@ Serato keeps MP3 hot cues IN THE FILE (GEOB tags). ~/Music/_Serato_/
 - Decided: any second output device; pre-fader (PFL) tap; cue on/off per deck + mix knob + level knob.
 - Push-backs recorded in the plan: the MacBook jack and speakers are one macOS device; the headphone path adds roughly 20–100 ms of buffering, plus clock drift; Chrome hides device names until a microphone grant; the existing headphone knob stops attenuating the speakers.
 - 2026-11-04: plan 007 built (see the plan's build log). Live CDP check passed: pre-fader cue carries audio with the channel fader at 0. Waiting on Rob's real second-device test.
+- 2026-11-04 (Rob away, testing session): MacBook speakers and headphone jack ARE separate Chrome outputs. Added a master output picker (native AudioContext + setSinkId), set Tone lookAhead 0 (was 100 ms on every action), and fixed stale device IDs with a name fallback. Details in plan 007, section 11.

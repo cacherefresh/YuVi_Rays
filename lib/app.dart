@@ -22,8 +22,14 @@ class YuViRaysApp extends StatelessWidget {
           void apply() => mixer.setPreferTagBpm(settings.preferTagBpm);
           apply();
           settings.addListener(apply); // both live for the app's lifetime
-          // Reconnect last session's headphone device. Chrome may need a
-          // click first; the bridge waits for one.
+          // Reconnect last session's output devices. The headphones may need
+          // a click first; the bridge waits for one.
+          final masterId = settings.masterDeviceId;
+          if (masterId != null) {
+            mixer.outputs.setMasterDevice(
+              AudioOutputDevice(id: masterId, name: settings.masterDeviceName ?? ''),
+            );
+          }
           final phonesId = settings.headphoneDeviceId;
           if (phonesId != null) {
             mixer.outputs.setHeadphoneDevice(

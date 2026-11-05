@@ -45,6 +45,17 @@ void main() {
     expect(describeHeadphoneStatus(o).$1, 'Playing on the chosen device');
   });
 
+  test('master device is separate from the headphone device', () async {
+    final o = FakeAudioOutputs();
+    await o.setMasterDevice(const AudioOutputDevice(id: 'spk', name: 'MacBook Pro Speakers'));
+    await o.setHeadphoneDevice(const AudioOutputDevice(id: 'hp', name: 'External Headphones'));
+    expect(o.masterDeviceId, 'spk');
+    expect(o.headphoneDeviceId, 'hp');
+    await o.setMasterDevice(null); // back to the system default
+    expect(o.masterDeviceId, isNull);
+    expect(o.headphoneDeviceId, 'hp');
+  });
+
   test('turning headphones off clears the device', () async {
     final o = FakeAudioOutputs();
     await o.setHeadphoneDevice(const AudioOutputDevice(id: 'x', name: 'X'));

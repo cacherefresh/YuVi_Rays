@@ -8,8 +8,10 @@ import 'settings_dialog.dart';
 
 const _muted = HeadphoneColors.muted;
 const _bad = HeadphoneColors.bad;
+const _warn = HeadphoneColors.warn;
 
-/// Settings → Headphones: choose the output device for the headphone mix.
+/// Settings → Audio outputs: where the master (speakers) and the headphone
+/// cue mix play.
 class HeadphoneSection extends StatefulWidget {
   const HeadphoneSection({super.key, required this.outputs});
 
@@ -21,7 +23,7 @@ class HeadphoneSection extends StatefulWidget {
 
 class _HeadphoneSectionState extends State<HeadphoneSection> {
   List<AudioOutputDevice> _devices = const [];
-  String? _defaultName; // the device the speakers (system default) use
+  String? _defaultName; // the system default device's name
   String? _error;
   bool _namesHidden = true;
   bool _loading = false;
@@ -63,7 +65,7 @@ class _HeadphoneSectionState extends State<HeadphoneSection> {
           _namesHidden = result.namesHidden;
           final def = devices.where((d) => d.id == 'default').firstOrNull;
           _defaultName = def?.name.replaceFirst(RegExp(r'^Default - '), '');
-          // "Default" would play the headphone mix on the speakers.
+          // "Default" is offered as "System default" instead.
           _devices = devices.where((d) => d.id != 'default').toList();
         case OutputDevicesFailed(:final reason):
           _error = reason == 'NotAllowedError'
@@ -74,22 +76,77 @@ class _HeadphoneSectionState extends State<HeadphoneSection> {
     });
   }
 
-  Future<void> _choose(AudioOutputDevice? device) async {
-    context.read<AppSettings>().rememberHeadphoneDevice(device?.id, device?.name);
-    await _outputs.setHeadphoneDevice(device);
+  AudioOutputDevice? _byId(String? id, String? fallbackName) => id == null
+      ? null
+      : _devices.where((d) => d.id == id).firstOrNull ??
+          AudioOutputDevice(id: id, name: fallbackName ?? '');
+
+  Future<void> _chooseMaster(String? id) async {
+    final d = _byId(id, _outputs.masterDeviceName);
+    context.read<AppSettings>().rememberMasterDevice(d?.id, d?.name);
+    await _outputs.setMasterDevice(d);
+  }
+
+  Future<void> _choosePhones(String? id) async {
+    final d = _byId(id, _outputs.headphoneDeviceName);
+    context.read<AppSettings>().rememberHeadphoneDevice(d?.id, d?.name);
+    await _outputs.setHeadphoneDevice(d);
+  }
+
+  String? _nameOf(String? id, String? fallback) => id == null
+      ? null
+      : (_devices.where((d) => d.id == id).firstOrNull?.name ?? fallback);
+
+  List<DropdownMenuItem<String?>> _items({
+    required String nullLabel,
+    required String? chosen,
+    required String? chosenName,
+  }) =>
+      [
+        DropdownMenuItem(value: null, child: Text(nullLabel, overflow: TextOverflow.ellipsis)),
+        for (final d in _devices)
+          DropdownMenuItem(value: d.id, child: Text(d.name, overflow: TextOverflow.ellipsis)),
+        // Keep a remembered device visible even when it isn't plugged in.
+        if (chosen != null && !_devices.any((d) => d.id == chosen))
+          DropdownMenuItem(
+            value: chosen,
+            child: Text('${chosenName ?? 'Saved device'}  (not found)',
+                overflow: TextOverflow.ellipsis),
+          ),
+      ];
+
+  Widget _picker({
+    required String label,
+    required String? value,
+    required List<DropdownMenuItem<String?>> items,
+    required ValueChanged<String?>? onChanged,
+  }) {
+    return Row(
+      children: [
+        SizedBox(width: 92, child: Text(label, style: const TextStyle(fontSize: 13))),
+        Expanded(
+          child: DropdownButton<String?>(
+            isExpanded: true,
+            value: value,
+            items: items,
+            onChanged: onChanged,
+          ),
+        ),
+      ],
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final o = _outputs;
-    final title = const Text('Headphones', style: TextStyle(fontWeight: FontWeight.w700));
+    const title = Text('Audio outputs', style: TextStyle(fontWeight: FontWeight.w700));
     if (!o.supported) {
-      return Column(
+      return const Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           title,
-          const SizedBox(height: 6),
-          const Text(
+          SizedBox(height: 6),
+          Text(
             'This browser can\'t send audio to a second device. Use Chrome or Edge.',
             style: TextStyle(color: _muted, fontSize: 12),
           ),
@@ -97,25 +154,9 @@ class _HeadphoneSectionState extends State<HeadphoneSection> {
       );
     }
 
-    final chosen = o.headphoneDeviceId;
-    final items = <DropdownMenuItem<String?>>[
-      const DropdownMenuItem(value: null, child: Text('Off')),
-      for (final d in _devices)
-        DropdownMenuItem(
-          value: d.id,
-          child: Text(
-            d.name == _defaultName ? '${d.name}  (speakers)' : d.name,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-      // Keep a remembered device visible even when it isn't plugged in.
-      if (chosen != null && !_devices.any((d) => d.id == chosen))
-        DropdownMenuItem(
-          value: chosen,
-          child: Text('${o.headphoneDeviceName ?? 'Saved device'}  (not found)',
-              overflow: TextOverflow.ellipsis),
-        ),
-    ];
+    final masterOn = o.masterDeviceId == null ? _defaultName : _nameOf(o.masterDeviceId, o.masterDeviceName);
+    final phonesOn = _nameOf(o.headphoneDeviceId, o.headphoneDeviceName);
+    final sameDevice = phonesOn != null && masterOn != null && phonesOn == masterOn;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -123,35 +164,51 @@ class _HeadphoneSectionState extends State<HeadphoneSection> {
         title,
         const SizedBox(height: 4),
         const Text(
-          'The speakers play the master on your default output. Choose a second '
-          'device for the headphone cue: a USB audio interface, USB or Bluetooth '
-          'headphones, or a display. A MacBook\'s headphone jack is the same '
-          'device as its speakers, so it can\'t be used for this.',
+          'Send the master to your speakers and the headphone cue to your '
+          'headphones. On a MacBook with headphones in the jack, Chrome lists '
+          '"MacBook Pro Speakers" and "External Headphones" separately: pick '
+          'the speakers for the master and the headphones for the cue. USB and '
+          'Bluetooth devices work too.',
           style: TextStyle(color: _muted, fontSize: 12),
         ),
         const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: DropdownButton<String?>(
-                isExpanded: true,
-                value: chosen,
-                items: items,
-                onChanged: (id) => _choose(id == null
-                    ? null
-                    : _devices.where((d) => d.id == id).firstOrNull ??
-                        AudioOutputDevice(id: id, name: o.headphoneDeviceName ?? '')),
-              ),
-            ),
-            IconButton(
-              tooltip: 'Find devices again',
-              icon: const Icon(Icons.refresh, size: 18),
-              onPressed: _loading ? null : () => _refresh(askPermission: true),
-            ),
-          ],
+        _picker(
+          label: 'Master',
+          value: o.masterDeviceId,
+          items: _items(
+            nullLabel: _defaultName == null ? 'System default' : 'System default ($_defaultName)',
+            chosen: o.masterDeviceId,
+            chosenName: o.masterDeviceName,
+          ),
+          onChanged: o.masterSupported ? _chooseMaster : null,
         ),
+        if (!o.masterSupported)
+          const Text('This browser always plays the master on the system default.',
+              style: TextStyle(color: _muted, fontSize: 11)),
+        if (o.masterError != null)
+          Text('Master output error: ${o.masterError}',
+              style: const TextStyle(color: _bad, fontSize: 12)),
+        _picker(
+          label: 'Headphones',
+          value: o.headphoneDeviceId,
+          items: _items(
+            nullLabel: 'Off',
+            chosen: o.headphoneDeviceId,
+            chosenName: o.headphoneDeviceName,
+          ),
+          onChanged: _choosePhones,
+        ),
+        if (sameDevice)
+          const Padding(
+            padding: EdgeInsets.only(top: 2),
+            child: Text(
+              'The headphones and the master are on the same device, so you will '
+              'hear both mixed together. Pick different devices.',
+              style: TextStyle(color: _warn, fontSize: 12),
+            ),
+          ),
         if (_namesHidden && _error == null) ...[
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
           const Text(
             'Chrome shows device names only after you allow microphone access. '
             'YuVi Rays turns the microphone off straight away and records nothing.',
@@ -212,16 +269,14 @@ class HeadphoneStatusChip extends StatelessWidget {
       builder: (context, _) {
         final (text, color) = describeHeadphoneStatus(outputs);
         return Tooltip(
-          message: '$text\nClick to choose the headphone device.',
+          message: '$text\nClick to choose the output devices.',
           child: InkWell(
             borderRadius: BorderRadius.circular(4),
             onTap: () => showSettingsDialog(context),
             child: Padding(
               padding: const EdgeInsets.all(2),
               child: Icon(
-                outputs.status == HeadphoneStatus.off
-                    ? Icons.headset_off
-                    : Icons.headphones,
+                outputs.status == HeadphoneStatus.off ? Icons.headset_off : Icons.headphones,
                 size: 16,
                 color: color,
               ),

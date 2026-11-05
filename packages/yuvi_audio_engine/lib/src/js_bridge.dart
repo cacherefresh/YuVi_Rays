@@ -29,4 +29,6 @@ extension type YuViDVSJS._(JSObject _) implements JSObject {
   external JSPromise<JSString> listOutputDevices(bool askPermission);
   external JSPromise<JSAny?> setHeadphoneSink(String? deviceId, String? deviceName);
   external String getHeadphoneStatus();
+  external bool masterSinkSupported();
+  external JSPromise<JSAny?> setMasterSink(String? deviceId, String? deviceName);
 }

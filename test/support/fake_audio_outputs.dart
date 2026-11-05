@@ -3,10 +3,25 @@ import 'package:yuvi_audio_engine/mixer_contracts.dart';
 
 /// [AudioOutputs] without a browser, for VM tests.
 class FakeAudioOutputs extends ChangeNotifier implements AudioOutputs {
-  FakeAudioOutputs({this.supported = true, this.devices = const []});
+  FakeAudioOutputs({this.supported = true, this.masterSupported = true, this.devices = const []});
 
   @override
   final bool supported;
+  @override
+  final bool masterSupported;
+  @override
+  String? masterDeviceId;
+  @override
+  String? masterDeviceName;
+  @override
+  String? masterError;
+
+  @override
+  Future<void> setMasterDevice(AudioOutputDevice? device) async {
+    masterDeviceId = device?.id;
+    masterDeviceName = device?.name;
+    notifyListeners();
+  }
   final List<AudioOutputDevice> devices;
 
   @override

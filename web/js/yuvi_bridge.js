@@ -47,6 +47,21 @@
     initMaster: function () {
       if (this._master) return this._master;
       loadBeatDetector().catch(() => {}); // warm the cache; errors surface per track
+      // Give Tone a native AudioContext instead of its compatibility wrapper,
+      // so the master output can move to another device (setSinkId). Must
+      // happen before any Tone node exists.
+      try {
+        const Native = window.AudioContext || window.webkitAudioContext;
+        Tone.setContext(new Tone.Context(new Native({ latencyHint: 'interactive' })));
+      } catch (e) {
+        console.warn('[YuViDVS] native AudioContext unavailable, using Tone default', e);
+      }
+      // Low latency: Tone schedules everything lookAhead seconds ahead
+      // (default 0.1 s), so play, stop, faders and EQ all acted 100 ms late.
+      // A live mixer reacts now. The device itself adds a few ms
+      // (latencyHint 'interactive').
+      Tone.getContext().lookAhead = 0;
+
       // smoothing=0.8 gives a natural ballistic feel matching Pioneer meters
       const meter     = new Tone.Meter({ normalRange: false, smoothing: 0.8 });
       const masterVol = new Tone.Volume(0);
@@ -311,6 +326,19 @@
       return all.filter((d) => d.kind === 'audiooutput');
     },
 
+    // A saved device ID can go stale (new browser profile, cleared site
+    // data). Fall back to the device with the same name, if any.
+    _resolveDevice: async function (deviceId, deviceName) {
+      try {
+        const outs = await this._outputs();
+        if (outs.some((d) => d.deviceId === deviceId)) return deviceId;
+        const byName = deviceName && outs.find((d) => d.label === deviceName && d.deviceId !== 'default');
+        return byName ? byName.deviceId : deviceId;
+      } catch (e) {
+        return deviceId;
+      }
+    },
+
     // Resolves to a JSON string: [{id, name}], or {error} on failure.
     listOutputDevices: async function (askPermission) {
       if (!this.headphonesSupported()) return JSON.stringify({ error: 'unsupported' });
@@ -354,6 +382,10 @@
       try {
         const m = this.initMaster();
         if (!ph.el) ph.el = new Audio();
+        const requested = deviceId;
+        deviceId = await this._resolveDevice(deviceId, deviceName);
+        if (ph.deviceId !== requested) return; // a newer choice replaced this one
+        ph.deviceId = deviceId;
         await ph.el.setSinkId(deviceId);
         ph.el.srcObject = m.phonesOut.stream;
         await this._playPhones(deviceId);
@@ -391,6 +423,37 @@
       return this._phones.status;
     },
 
+    // ── Master (speakers) output device ──────────────────────────────────
+    // The master stays on the AudioContext's own output, the lowest-latency
+    // path; only its device changes. '' / null = the system default.
+    _masterSink: { deviceId: null, deviceName: null },
+
+    masterSinkSupported: function () {
+      return typeof Tone.getContext().rawContext.setSinkId === 'function';
+    },
+
+    setMasterSink: async function (deviceId, deviceName) {
+      this.initMaster();
+      const ctx = Tone.getContext().rawContext;
+      const ms = this._masterSink;
+      if (typeof ctx.setSinkId !== 'function') {
+        this._emit('masterOutput', '', { status: 'unsupported' });
+        return;
+      }
+      try {
+        if (deviceId) deviceId = await this._resolveDevice(deviceId, deviceName);
+        await ctx.setSinkId(deviceId || '');
+        ms.deviceId = deviceId || null;
+        ms.deviceName = deviceId ? (deviceName || null) : null;
+        this._emit('masterOutput', '', { status: 'ok', deviceId: ms.deviceId, deviceName: ms.deviceName });
+      } catch (e) {
+        this._emit('masterOutput', '', {
+          status: 'error', deviceId: ms.deviceId, deviceName: ms.deviceName,
+          message: String((e && e.message) || e),
+        });
+      }
+    },
+
     // Follows plug / unplug: pause when the chosen device goes away and
     // resume when it (or a device with the same name) comes back.
     _watchOutputDevices: function () {
@@ -399,8 +462,14 @@
       navigator.mediaDevices.addEventListener('devicechange', async () => {
         const ph = this._phones;
         this._emit('outputDevicesChanged', '', {});
-        if (!ph.deviceId) return;
         const outs = await this._outputs();
+        const ms = this._masterSink;
+        const ctx = Tone.getContext().rawContext;
+        if (ms.deviceId && ctx.sinkId !== ms.deviceId &&
+            outs.some((d) => d.deviceId === ms.deviceId)) {
+          this.setMasterSink(ms.deviceId, ms.deviceName); // came back: re-apply
+        }
+        if (!ph.deviceId) return;
         const same = outs.find((d) => d.deviceId === ph.deviceId) ||
           (ph.deviceName && outs.find((d) => d.label === ph.deviceName));
         if (!same) {

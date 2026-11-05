@@ -43,6 +43,24 @@ void main() {
     expect(has(r'phonesVol\.connect\(phonesOut\)'), isTrue);
   });
 
+  test('low latency: Tone look-ahead is off', () {
+    // Tone's default 0.1 s look-ahead delays every play, stop, fader and EQ.
+    expect(has(r'lookAhead = 0;'), isTrue);
+  });
+
+  test('Tone runs on a native AudioContext, so the master can change device', () {
+    // Tone's default wrapper context has no setSinkId.
+    expect(has(r'Tone\.setContext\(new Tone\.Context\(new Native\('), isTrue);
+    expect(has(r"latencyHint: 'interactive'"), isTrue);
+    expect(has(r'ctx\.setSinkId\(deviceId \|\| ..\)'), isTrue, reason: 'master output device');
+  });
+
+  test('a stale saved device ID falls back to the device with the same name', () {
+    expect(has(r'_resolveDevice: async function'), isTrue);
+    expect(RegExp(r'this\._resolveDevice\(').allMatches(js).length, 2,
+        reason: 'used by both the master and the headphone paths');
+  });
+
   test('the headphone element is routed with setSinkId', () {
     expect(has(r'\.setSinkId\(deviceId\)'), isTrue);
     expect(has(r"addEventListener\('devicechange'"), isTrue, reason: 'unplug / replug handling');

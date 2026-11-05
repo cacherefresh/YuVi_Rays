@@ -16,7 +16,7 @@
 
 ## 2. Where this plan differs from the guide, and why
 
-1. **The MacBook headphone jack is not a second output.** In macOS the built-in speakers and the 3.5 mm jack are one device; plugging in headphones mutes the speakers. `setSinkId` can't split them. A second device is needed (decision above).
+1. ~~The MacBook headphone jack is not a second output.~~ **Wrong, corrected 2026-11-04.** On Rob's MacBook Pro with headphones in the jack, Chrome lists "MacBook Pro Speakers" and "External Headphones" as separate devices, and both play at once. So the master also needed a device picker (`AudioContext.setSinkId`), added in section 11.
 2. **Pre-fader tap, not post-fader.** A post-fader tap goes silent when the fader is down, which is exactly when you want to cue the next track.
 3. **No per-deck cue level.** One on/off per deck, plus the mix and level knobs, matches real mixers and keeps the UI small.
 4. **The headphone path is not sample-locked to the speakers.** The guide's method (one AudioContext → `MediaStreamDestination` → hidden `<audio>` → `setSinkId`) is still the right one: it keeps one audio graph and one clock for all processing. But the stream and the audio element add buffering, roughly 20–100 ms, and the second device runs on its own clock. So the headphones lag the speakers slightly, and a long session can drift or glitch briefly. That's fine for cueing. Bluetooth adds far more delay (150–300 ms) and makes beat matching by ear hard. Measure in phase 2.
@@ -162,3 +162,34 @@ Implementation: `WebAudioOutputs` in yuvi_audio_engine calls new bridge function
   - test/command_dispatcher_test.dart
 - **Live check in Chrome over CDP** (port 8091), 12 of 12 passed. With deck A's fader at 0, PFL off gives a silent cue bus. After a real `P` key event, the cue bus reads −6.7 dB while the master stays silent (pre-fader confirmed).
 - **Not verified yet:** audio actually reaching a second device (needs Rob's microphone grant and hardware), and the headphone delay against the speakers.
+
+## 11. Testing session on Rob's MacBook (2026-11-04)
+
+Rob was away; tested live in Chrome 156 over the debugger, with headphones in the jack and the MPK Mini connected. Chrome was started with `--use-fake-ui-for-media-stream` to accept the microphone prompt automatically.
+
+- **Finding: the jack is a separate device.** Chrome listed `Default - External Headphones`, `External Headphones (Built-in)` and `MacBook Pro Speakers (Built-in)`.
+- **Added: master output picker.**
+  - `setMasterSink(id, name)` uses `AudioContext.setSinkId`.
+  - Tone's own wrapper context has no `setSinkId`, so the bridge now hands Tone a native `AudioContext({latencyHint: 'interactive'})` before any node exists.
+  - Contract: `AudioOutputs.masterSupported / masterDeviceId / masterDeviceName / masterError / setMasterDevice`.
+  - Settings → Audio outputs has Master and Headphones pickers, with a warning when both are the same device.
+  - Remembered in `AppSettings.masterDeviceId / Name`.
+- **Latency fix.**
+  - Tone's default `lookAhead` of 0.1 s delayed every play, stop, fader and EQ change by 100 ms. It is now 0.
+  - The device base latency is 5.8 ms (44.1 kHz).
+  - Stress test: 30 rapid seeks, pitch changes and play/pause produced no errors, and the playhead moved 0.998 s per 1 s.
+- **Bug fixed: stale device IDs.**
+  - Chrome gives new device IDs in a new profile, so a saved ID could fail on restore.
+  - `_resolveDevice` now falls back to the device with the same name. This was tested by saving bogus IDs and reloading: both outputs found their devices.
+- **End to end, with real keys and clicks:**
+  - Loaded ULTRAVIOLET from the song menu (BPM 150.00).
+  - Master on MacBook Pro Speakers; headphones on External Headphones (status `playing`, stream moving).
+  - `P` lit Deck A's cue button, and `[` played the deck.
+  - The cue bus, master and headphone mix all carried the track.
+- **Restore after reload:** the master switched back straight away. The headphones waited with `waitingForClick`, then played after one click.
+- **Not measured:** the exact delay of the headphone path against the speakers. It needs a loopback cable or Rob's ears.
+- **Both decks, isolation checks** (both loaded from the song menu; `\` and `P` cued both; `[` and `]` played both):
+  - The graph showed `CUE A+B`.
+  - Deck B's fader and crossfader at 0: B was silent in the master but still played in the headphones (pre-fader and pre-crossfader confirmed).
+  - PHONES at 0: the headphones dropped to −79 dB and the master was unchanged.
+  - MIX full left: the headphones carried the cued decks only.

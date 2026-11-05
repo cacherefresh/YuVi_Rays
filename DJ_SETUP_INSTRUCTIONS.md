@@ -103,21 +103,28 @@ Unknown controllers get the generic layout. It suits an 8-knob, 8-pad controller
 | Pads 1–4 | Deck A: play/pause, jump to cue, stop, set cue |
 | Pads 5–8 | Deck B: the same |
 
-### Headphones (cue)
+### Headphones (cue) and master output
 
-The speakers play the master on your Mac's default output. The headphones get their own mix on a **second output device**.
+The master and the headphone cue can play on **different output devices**.
 
-- **What counts as a second device:** a USB audio interface, USB or Bluetooth headphones, or a display with speakers. A MacBook's headphone jack doesn't count: macOS treats it and the built-in speakers as one device, and plugging in headphones mutes the speakers.
+- **On a MacBook with headphones in the jack**, Chrome lists **MacBook Pro Speakers** and **External Headphones** as separate devices. Send the master to the speakers and the cue to the headphones. This was tested on Rob's MacBook Pro.
+- **Other devices** work too: a USB audio interface, USB or Bluetooth headphones, a display.
 - **Set it up:**
-  1. Open **Settings → Headphones**.
+  1. Open **Settings → Audio outputs**.
   2. Click **Show my output devices**. Chrome asks for microphone access, because it shows device names only after that. The app turns the microphone off straight away and records nothing.
-  3. Pick the device. The app remembers it. After a reload, click anywhere once and the headphones start again.
+  3. Set **Master** to your speakers, for example MacBook Pro Speakers.
+  4. Set **Headphones** to your headphones, for example External Headphones.
+  5. Both are remembered. After a reload the master switches back straight away; click anywhere once and the headphones start again.
+- **If both are on the same device**, Settings warns you, because you would hear the master and the cue mixed together.
 - **Cue a deck:** press the headphone button under the deck's volume fader, or `P` / `\`. You hear the deck after its EQ but before its fader and the crossfader, so you can cue a track the crowd can't hear. Cue both decks to hear them together.
 - **MIX knob:** full left is the cued decks only, the centre is both, full right is the master only.
 - **PHONES knob:** headphone level. It never changes the speakers.
-- **The headphone icon** under the knobs shows the status. Click it to open Settings.
-- **Delay:** the headphones run slightly behind the speakers, by tens of milliseconds. Bluetooth adds 150–300 ms, which makes beat matching by ear hard. Wired USB is best.
-- **Not built yet:** split cue (master in one ear, cue in the other, for a laptop with no second device), and one 4-output interface carrying both mixes.
+- **The headphone icon** under the knobs shows the headphone status. Click it to open Settings.
+- **Delay:**
+  - The master plays on the browser's direct audio output (about 6 ms on a MacBook).
+  - The headphones go through an extra stream and run slightly behind, by tens of milliseconds.
+  - Bluetooth adds 150–300 ms, which makes beat matching by ear hard. Wired is best.
+- **Not built yet:** split cue (master in one ear, cue in the other), and one 4-output interface carrying both mixes.
 
 ---
 
@@ -165,6 +172,6 @@ Your choices are saved in this browser, per device.
 | "No MIDI device found" | macOS can't see the controller. Plug it straight into the Mac with a cable known to carry data. A controller that lights up can still have no data connection. Close other apps that hold the device open, such as a DAW. Full steps: `_DEVELOPER_NOTES/_NON_HUMAN_NOTES/midi_usb_troubleshooting.md`. |
 | Controller shows in `ioreg` or System Information but not in Audio MIDI Setup | macOS security is holding it back. Open **System Settings → Privacy & Security**, set **Allow accessories to connect** to **Automatically when unlocked**, and approve the accessory if asked. |
 | Keyboard keys do nothing | Click once on the page so the browser window has focus. |
-| No sound in the headphones | Choose a device in **Settings → Headphones**, then press a deck's headphone button or turn **MIX** to the right. If the icon under the knobs is orange, click anywhere on the page. |
-| Headphones play on the speakers | The chosen device is the one the speakers use. Pick a different one; the speakers' device is marked "(speakers)". |
+| No sound in the headphones | Choose a device in **Settings → Audio outputs**, then press a deck's headphone button or turn **MIX** to the right. If the icon under the knobs is orange, click anywhere on the page. |
+| Headphones and master sound mixed together | They are on the same device. In **Settings → Audio outputs**, set **Master** to the speakers and **Headphones** to the headphones. Settings shows a warning when they match. |
 | A fader jumps when first moved | Expected. The on-screen value snaps to the hardware position. |
