@@ -48,6 +48,12 @@ abstract interface class DeckControls {
   void setVolume(double normalized);
   void setPitchCoarse(double percent);
   void setPitchFine(double percent);
+
+  /// Headphone cue (PFL): this deck's sound, taken after the EQ and before
+  /// the channel fader, goes to the headphone mix.
+  bool get headphoneCue;
+  void setHeadphoneCue(bool on);
+  void toggleHeadphoneCue();
 }
 
 /// The whole mixer: decks plus the master section.
@@ -56,10 +62,16 @@ abstract interface class MixerControls {
   DeckControls? deck(String deckId);
 
   double get masterVolume;
+  /// Headphone level, 0..1. Affects only the headphones.
   double get headphoneVolume;
+
+  /// Headphone cue/master mix: 0 = cued decks only, 0.5 = both,
+  /// 1 = master only.
+  double get headphoneMix;
   double get crossfader;
 
   void setMasterVolume(double normalized);
   void setHeadphoneVolume(double normalized);
+  void setHeadphoneMix(double position);
   void setCrossfader(double position);
 }

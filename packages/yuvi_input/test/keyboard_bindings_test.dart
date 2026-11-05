@@ -18,6 +18,11 @@ void main() {
     expect(b.lookup(PhysicalKeyboardKey.slash), isA<Stop>().having((c) => c.deckId, 'deck', 'B'));
   });
 
+  test('P and backslash toggle the headphone cue (PFL) for A and B', () {
+    expect(b.lookup(PhysicalKeyboardKey.keyP), isA<ToggleHeadphoneCue>().having((c) => c.deckId, 'deck', 'A'));
+    expect(b.lookup(PhysicalKeyboardKey.backslash), isA<ToggleHeadphoneCue>().having((c) => c.deckId, 'deck', 'B'));
+  });
+
   test('Shift on the cue key sets the cue', () {
     expect(b.lookup(PhysicalKeyboardKey.semicolon, shift: true), isA<SetCue>());
     expect(b.lookup(PhysicalKeyboardKey.quote, shift: true), isA<SetCue>());

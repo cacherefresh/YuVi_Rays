@@ -3,6 +3,7 @@
 /// `yuvi_audio_engine.dart`.
 library;
 
+export 'src/contracts/audio_outputs.dart';
 export 'src/contracts/mixer_controls.dart';
 export 'src/crossfader_curve.dart';
 export 'src/pitch_math.dart';

@@ -23,4 +23,10 @@ extension type YuViDVSJS._(JSObject _) implements JSObject {
   external void setCuePointAt(String deckId, double normalized);
   external double getPosition(String deckId);
   external double getMasterLevel();
+  external void setHeadphoneCue(String deckId, bool on);
+  external void setHeadphoneMixGains(double cueGain, double masterGain);
+  external bool headphonesSupported();
+  external JSPromise<JSString> listOutputDevices(bool askPermission);
+  external JSPromise<JSAny?> setHeadphoneSink(String? deviceId, String? deviceName);
+  external String getHeadphoneStatus();
 }

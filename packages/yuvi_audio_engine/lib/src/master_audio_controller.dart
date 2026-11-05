@@ -3,8 +3,8 @@ import 'deck_audio_controller.dart';
 import 'js_bridge.dart';
 import 'models/master_state.dart';
 
-/// Controls the master section of the audio graph: master volume,
-/// headphone volume and the crossfader between two decks.
+/// Controls the master section of the audio graph: master volume, the
+/// headphone level and cue/master mix, and the crossfader between two decks.
 ///
 /// The crossfader is assigned to a [left] and [right] deck so a 3rd or 4th
 /// deck can stay off the crossfader (straight to master).
@@ -17,6 +17,7 @@ class MasterAudioController {
     yuViDVS.initMaster();
     setMasterVolume(state.masterVolume);
     setHeadphoneVolume(state.headphoneVolume);
+    setHeadphoneMix(state.headphoneMix);
     setCrossfader(state.crossfader);
   }
 
@@ -34,6 +35,15 @@ class MasterAudioController {
     final v = normalized.clamp(0.0, 1.0);
     state.update(headphoneVolume: v);
     yuViDVS.setHeadphoneVolume(v);
+  }
+
+  /// Headphone cue/master mix, with the same equal-power curve as the
+  /// crossfader: cue on the left, master on the right.
+  void setHeadphoneMix(double position) {
+    final x = position.clamp(0.0, 1.0);
+    state.update(headphoneMix: x);
+    final gains = equalPowerCrossfade(x);
+    yuViDVS.setHeadphoneMixGains(gains.left, gains.right);
   }
 
   void setCrossfader(double position) {

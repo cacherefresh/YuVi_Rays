@@ -51,6 +51,13 @@ final class SetCue extends DeckCommand {
   String toString() => 'SetCue($deckId)';
 }
 
+/// Headphone cue (PFL) on/off for a deck. Not the cue point.
+final class ToggleHeadphoneCue extends DeckCommand {
+  const ToggleHeadphoneCue(super.deckId);
+  @override
+  String toString() => 'ToggleHeadphoneCue($deckId)';
+}
+
 /// Jumps to the cue point and plays.
 final class PlayFromCue extends DeckCommand {
   const PlayFromCue(super.deckId);
@@ -143,6 +150,17 @@ final class SetHeadphoneVolume extends MixerCommand implements ValueCommand {
   final double? pickupTolerance;
   @override
   String toString() => 'SetHeadphoneVolume($value)';
+}
+
+/// Headphone cue/master mix: 0 = cue only, 0.5 = both, 1 = master only.
+final class SetHeadphoneMix extends MixerCommand implements ValueCommand {
+  const SetHeadphoneMix(this.value, {this.pickupTolerance});
+  @override
+  final double value;
+  @override
+  final double? pickupTolerance;
+  @override
+  String toString() => 'SetHeadphoneMix($value)';
 }
 
 /// Crossfader, 0 (Deck A) .. 1 (Deck B).

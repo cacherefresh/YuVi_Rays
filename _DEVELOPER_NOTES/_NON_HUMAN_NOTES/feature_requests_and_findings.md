@@ -296,3 +296,10 @@ Serato keeps MP3 hot cues IN THE FILE (GEOB tags). ~/Music/_Serato_/
 - Bank A pads 5, 6 (notes 48, 49) = Deck A hot cues 1, 2. Pads 7, 8 (notes 50, 51) = Deck B hot cues 1, 2. Same `hotCue` action as bank B: empty sets at the playhead, set jumps.
 - Clash: the piano keys share channel 1 and start at note 48 at the default octave, so keys C..D# also fire these. Fix on the device: OCT+ once, or change the pad notes in the Akai editor (then update the YAML).
 - Tests: "bank A pads 5-8" group in test/midi_fake_runner_test.dart; the layout test now expects pads 5-8 as hot cues.
+
+### 2026-11-04: Headphone cue (plan 007, Draft)
+
+- Rob's guide: MediaStreamDestination + hidden `<audio>` + `setSinkId` for a headphone cue bus.
+- Decided: any second output device; pre-fader (PFL) tap; cue on/off per deck + mix knob + level knob.
+- Push-backs recorded in the plan: the MacBook jack and speakers are one macOS device; the headphone path adds roughly 20–100 ms of buffering, plus clock drift; Chrome hides device names until a microphone grant; the existing headphone knob stops attenuating the speakers.
+- 2026-11-04: plan 007 built (see the plan's build log). Live CDP check passed: pre-fader cue carries audio with the channel fader at 0. Waiting on Rob's real second-device test.

@@ -22,6 +22,9 @@ class DeckState extends ChangeNotifier {
   double position = 0.0;
   double duration = 0.0;
   double cuePoint = 0.0;
+
+  /// Headphone cue (PFL) on: this deck plays in the headphone mix.
+  bool headphoneCue = false;
   List<double> waveformData = const [];
 
   DeckState(this.id);
@@ -106,6 +109,7 @@ class DeckState extends ChangeNotifier {
     double? position,
     double? duration,
     double? cuePoint,
+    bool? headphoneCue,
     List<double>? waveformData,
   }) {
     var changed = false;
@@ -122,6 +126,7 @@ class DeckState extends ChangeNotifier {
     }
     set(isLoaded, this.isLoaded, (v) => this.isLoaded = v);
     set(isPlaying, this.isPlaying, (v) => this.isPlaying = v);
+    set(headphoneCue, this.headphoneCue, (v) => this.headphoneCue = v);
     if (volume != null) {
       final clamped = volume.clamp(0.0, 1.0);
       if (clamped != this.volume) {

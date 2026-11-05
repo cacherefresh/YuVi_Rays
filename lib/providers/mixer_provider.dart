@@ -13,10 +13,14 @@ class MixerProvider extends ChangeNotifier implements MixerControls {
   late final DeckAudioController deckB;
   late final MasterAudioController masterAudio;
 
+  /// Where the headphone mix plays (a second output device).
+  late final WebAudioOutputs outputs;
+
   MixerProvider() {
     deckA = DeckAudioController(stateA);
     deckB = DeckAudioController(stateB);
     masterAudio = MasterAudioController(master, left: deckA, right: deckB);
+    outputs = WebAudioOutputs();
 
     // Single global callback dispatches to the right deck controller
     yuViDVS.setDartCallback(
@@ -41,6 +45,8 @@ class MixerProvider extends ChangeNotifier implements MixerControls {
   double get masterVolume => master.masterVolume;
   @override
   double get headphoneVolume => master.headphoneVolume;
+  @override
+  double get headphoneMix => master.headphoneMix;
 
   void _handleJsEvent(String jsonStr) {
     try {
@@ -48,7 +54,11 @@ class MixerProvider extends ChangeNotifier implements MixerControls {
       final event = map['event'] as String? ?? '';
       final deckId = map['deckId'] as String? ?? '';
       final data = (map['data'] as Map<String, dynamic>?) ?? {};
-      deck(deckId)?.handleEvent(event, data);
+      if (deckId.isEmpty) {
+        outputs.handleEvent(event, data); // mixer-wide events
+      } else {
+        deck(deckId)?.handleEvent(event, data);
+      }
     } catch (e) {
       debugPrint('[MixerProvider] event parse error: $e');
     }
@@ -72,4 +82,7 @@ class MixerProvider extends ChangeNotifier implements MixerControls {
 
   @override
   void setHeadphoneVolume(double value) => masterAudio.setHeadphoneVolume(value);
+
+  @override
+  void setHeadphoneMix(double value) => masterAudio.setHeadphoneMix(value);
 }

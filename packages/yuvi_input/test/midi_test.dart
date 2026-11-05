@@ -69,6 +69,38 @@ void main() {
     });
   });
 
+  group('headphone actions in YAML', () {
+    const yaml = '''
+name: Phones
+knobs:
+  - { cc: 9, action: headphoneMix, takeover: pickup }
+  - { cc: 10, action: headphoneVolume }
+pads:
+  - { note: 60, deck: A, on_press: headphoneCue }
+  - { note: 61, deck: B, on_press: headphoneCue }
+''';
+
+    test('parse, with the mix knob centred and full range', () {
+      final p = MidiProfile.fromYaml(yaml);
+      final mix = p.knobs.firstWhere((k) => k.action == KnobAction.headphoneMix);
+      expect(mix.min, 0);
+      expect(mix.max, 1);
+      expect(mix.takeover, Takeover.pickup);
+      expect([mix.scale(0), mix.scale(64), mix.scale(127)], [0, 0.5, 1]);
+      expect(p.pads.map((pad) => pad.onPress), everyElement(PadAction.headphoneCue));
+    });
+
+    test('survive export and import (toYaml round trip)', () {
+      final p = MidiProfile.fromYaml(yaml);
+      expect(MidiProfile.fromYaml(p.toYaml()).toYaml(), p.toYaml());
+    });
+
+    test('headphoneCue needs a deck', () {
+      expect(() => MidiProfile.fromYaml('name: X\npads:\n  - { note: 60, on_press: headphoneCue }'),
+          throwsFormatException);
+    });
+  });
+
   group('MidiProfile YAML', () {
     final profile = MidiProfile.fromYaml(_profileYaml);
 
@@ -127,6 +159,24 @@ void main() {
           .having((c) => c.pickupTolerance, 'pickup', closeTo(0.96, 1e-9)));
       expect(out[2], isA<SetPitchFine>().having((c) => c.value, 'v', 1.0)
           .having((c) => c.pickupTolerance, 'pickup', isNull));
+    });
+
+    test('headphone actions: pad toggles PFL, knob sets the mix with an exact centre', () {
+      final p = MidiProfile.fromYaml('''
+name: Phones
+knobs:
+  - { cc: 9, action: headphoneMix }
+pads:
+  - { note: 60, deck: B, on_press: headphoneCue }
+''');
+      final cmds = <MixerCommand>[];
+      final m = MidiMapper(p, emit: cmds.add, timer: timers.create);
+      m.handleBytes([0x90, 60, 100]);
+      m.handleBytes([0xB0, 9, 64]);
+      m.handleBytes([0xB0, 9, 0]);
+      expect(cmds[0], isA<ToggleHeadphoneCue>().having((c) => c.deckId, 'deck', 'B'));
+      expect(cmds[1], isA<SetHeadphoneMix>().having((c) => c.value, 'v', 0.5));
+      expect(cmds[2], isA<SetHeadphoneMix>().having((c) => c.value, 'v', 0.0));
     });
 
     test('channel filter is respected', () {

@@ -7,7 +7,7 @@
 
 ## What we found (2026-11-03)
 
-- Rob's macOS user name (`rob-developer`) is in files committed in `9e29532` ("added cue points and hardware support…"):
+- Rob's macOS account name is in files committed in `9e29532` ("added cue points and hardware support…"):
   - `macos/Flutter/ephemeral/*`: 5 files Flutter regenerates on every build, with absolute local paths.
   - `packages/*/build/`: 24 test-cache and asset files, including 47 MB `.dill` test caches.
 - `9e29532` is pushed to `origin/feature/midi_hardware_plus_crossfader_via_audio`. It is **not** on `sanctuary` (checked with `git grep` on `origin/sanctuary`).

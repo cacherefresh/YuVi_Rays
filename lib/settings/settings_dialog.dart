@@ -3,7 +3,9 @@ import 'package:provider/provider.dart';
 import 'package:yuvi_input/yuvi_input_web.dart';
 
 import '../input/input_controller.dart';
+import '../providers/mixer_provider.dart';
 import 'app_settings.dart';
+import 'headphone_section.dart';
 import 'midi_mapping_section.dart';
 
 const _accent = Color(0xFF00D4AA);
@@ -17,6 +19,7 @@ Future<void> showSettingsDialog(BuildContext context) {
       providers: [
         ChangeNotifierProvider.value(value: context.read<AppSettings>()),
         Provider.value(value: context.read<InputController>()),
+        ChangeNotifierProvider.value(value: context.read<MixerProvider>()),
       ],
       child: const _SettingsDialog(),
     ),
@@ -67,6 +70,8 @@ class _SettingsDialog extends StatelessWidget {
                 const SizedBox(height: 16),
                 MidiMappingSection(midi: midi, registry: registry),
               ],
+              const Divider(height: 32),
+              HeadphoneSection(outputs: context.read<MixerProvider>().outputs),
               const Divider(height: 32),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
@@ -149,6 +154,7 @@ class _KeyboardTable extends StatelessWidget {
     ('Stop', '.', '/'),
     ('Hot cues 1-4', '1 2 3 4', '7 8 9 0'),
     ('Clear a hot cue', 'Shift + 1-4', 'Shift + 7-0'),
+    ('Headphone cue', 'P', r'\'),
   ];
 
   @override

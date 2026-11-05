@@ -22,6 +22,8 @@ class CommandDispatcher {
         if (_accept(command, mixer.masterVolume)) mixer.setMasterVolume(command.value);
       case SetHeadphoneVolume():
         if (_accept(command, mixer.headphoneVolume)) mixer.setHeadphoneVolume(command.value);
+      case SetHeadphoneMix():
+        if (_accept(command, mixer.headphoneMix)) mixer.setHeadphoneMix(command.value);
       case SetCrossfader():
         if (_accept(command, mixer.crossfader)) mixer.setCrossfader(command.value);
     }
@@ -39,6 +41,8 @@ class CommandDispatcher {
         deck.setCuePoint();
       case PlayFromCue():
         deck.playFromCue();
+      case ToggleHeadphoneCue():
+        deck.toggleHeadphoneCue();
       case ArmCue():
         deck.armCue();
       case CommitArmedCue():

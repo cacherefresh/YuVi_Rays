@@ -7,6 +7,7 @@ import 'package:yuvi_deck/yuvi_deck.dart';
 
 import '../providers/mixer_provider.dart';
 import '../settings/app_settings.dart';
+import '../settings/headphone_section.dart';
 import '../settings/midi_hint_dialog.dart';
 import '../settings/settings_dialog.dart';
 
@@ -207,13 +208,32 @@ class _MasterSection extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 6),
-              KnobWidget(
-                label: 'PHONES',
-                value: m.headphoneVolume,
-                onChanged: mixer.setHeadphoneVolume,
-                color: Colors.white,
-                size: 34,
+              // Headphones: cue/master mix and level. Affect only the
+              // headphone output, never the speakers.
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  Tooltip(
+                    message: 'Headphone mix: left = cued decks, right = master',
+                    child: KnobWidget(
+                      label: 'MIX',
+                      value: m.headphoneMix,
+                      onChanged: mixer.setHeadphoneMix,
+                      color: Colors.white,
+                      size: 30,
+                    ),
+                  ),
+                  KnobWidget(
+                    label: 'PHONES',
+                    value: m.headphoneVolume,
+                    onChanged: mixer.setHeadphoneVolume,
+                    color: Colors.white,
+                    size: 30,
+                  ),
+                ],
               ),
+              const SizedBox(height: 4),
+              HeadphoneStatusChip(outputs: mixer.outputs),
             ],
           ),
         );

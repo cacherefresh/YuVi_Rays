@@ -24,6 +24,8 @@ class FakeDeck implements DeckControls {
   double pitchFine = 0;
   @override
   double cuePoint = 0;
+  @override
+  bool headphoneCue = false;
 
   double get playbackRate => playbackRateForPercent(pitchCoarse + pitchFine);
 
@@ -56,6 +58,13 @@ class FakeDeck implements DeckControls {
 
   @override
   void setCuePoint() => cuePoint = _normalized;
+  @override
+  void setHeadphoneCue(bool on) => headphoneCue = on;
+  @override
+  void toggleHeadphoneCue() {
+    headphoneCue = !headphoneCue;
+    log.add(headphoneCue ? 'pflOn' : 'pflOff');
+  }
   @override
   void jumpToCue() => seconds = cuePoint * durationSeconds;
   @override
@@ -114,12 +123,16 @@ class FakeMixer implements MixerControls {
   @override
   double headphoneVolume = 1;
   @override
+  double headphoneMix = 0.5;
+  @override
   double crossfader = 0.5;
 
   @override
   void setMasterVolume(double v) => masterVolume = v;
   @override
   void setHeadphoneVolume(double v) => headphoneVolume = v;
+  @override
+  void setHeadphoneMix(double v) => headphoneMix = v;
   @override
   void setCrossfader(double v) => crossfader = v;
 }

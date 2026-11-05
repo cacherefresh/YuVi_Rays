@@ -14,6 +14,7 @@ class KeyboardBindings {
   /// Two decks, each controlled by a diagonal column of keys:
   ///
   /// ```
+  ///  P   \  headphone cue (PFL), outside [ and ]
   ///   [ ]   play / pause
   ///    ; '  jump to cue   (Shift = set cue)
   ///     . / stop
@@ -34,6 +35,9 @@ class KeyboardBindings {
       (key: PhysicalKeyboardKey.quote, shift: false): JumpToCue(right),
       (key: PhysicalKeyboardKey.quote, shift: true): SetCue(right),
       (key: PhysicalKeyboardKey.slash, shift: false): Stop(right),
+      // Headphone cue (PFL): the keys just outside [ and ].
+      (key: PhysicalKeyboardKey.keyP, shift: false): ToggleHeadphoneCue(left),
+      (key: PhysicalKeyboardKey.backslash, shift: false): ToggleHeadphoneCue(right),
       // Hot cues: 1-4 for the left deck, 7-0 for the right deck.
       // Shift + the key clears that hot cue.
       for (final (i, k) in _leftHotCueKeys.indexed) ...{

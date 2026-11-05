@@ -77,6 +77,7 @@ class MidiMapper {
       KnobAction.channelVolume => SetChannelVolume(deck, v, pickupTolerance: tol),
       KnobAction.masterVolume => SetMasterVolume(v, pickupTolerance: tol),
       KnobAction.headphoneVolume => SetHeadphoneVolume(v, pickupTolerance: tol),
+      KnobAction.headphoneMix => SetHeadphoneMix(v, pickupTolerance: tol),
       KnobAction.crossfader => SetCrossfader(v, pickupTolerance: tol),
       KnobAction.pitchCoarse => SetPitchCoarse(deck, v, pickupTolerance: tol),
       KnobAction.pitchFine => SetPitchFine(deck, v, pickupTolerance: tol),
@@ -94,6 +95,7 @@ class MidiMapper {
         PadAction.playFromCue => PlayFromCue(deck),
         PadAction.armCue => ArmCue(deck),
         PadAction.commitCue => CommitArmedCue(deck),
+        PadAction.headphoneCue => ToggleHeadphoneCue(deck),
         PadAction.hotCue => TriggerHotCue(deck, index),
         PadAction.clearHotCue => ClearHotCue(deck, index),
       };

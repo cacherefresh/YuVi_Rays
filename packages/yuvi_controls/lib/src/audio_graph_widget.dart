@@ -114,13 +114,31 @@ extension on _AudioGraphWidgetState {
     if (m == null) {
       return const _Node(label: 'MASTER', color: Colors.white, bold: true);
     }
-    // Headphones sit after master on the one laptop output (see plan 001).
+    // Speakers come straight off the master. The headphones get their own
+    // mix: pre-fader cue of the cued decks, blended with the master (plan 007).
+    final cued = [
+      if (widget.deckA.headphoneCue) widget.deckA.id,
+      if (widget.deckB.headphoneCue) widget.deckB.id,
+    ];
+    final mix = (m.headphoneMix * 100).round();
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         _Node(label: 'MASTER', color: Colors.white, bold: true, value: _DeckChain._volDb(m.masterVolume)),
         const Text('▼', style: TextStyle(color: Color(0xFF636366), fontSize: 8)),
-        _Node(label: 'PHONES ► OUT', color: Colors.white, value: _DeckChain._volDb(m.headphoneVolume)),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const _Node(label: 'SPEAKERS', color: Colors.white),
+            const SizedBox(width: 6),
+            _Node(
+              label: 'PHONES',
+              color: Colors.white,
+              value: 'CUE ${cued.isEmpty ? '-' : cued.join('+')} · '
+                  'MST $mix% · ${_DeckChain._volDb(m.headphoneVolume)}',
+            ),
+          ],
+        ),
       ],
     );
   }

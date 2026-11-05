@@ -14,3 +14,4 @@ Implementation plans for YuVi Rays. One folder per plan, numbered in order.
 | 004 | [Tempo readout above pitch fader](004_tempo_readout/plan.md) | Done | Rob 2026-11-03 |
 | 005 | [feature/write-perm_storage-savefeature](005_write-perm_storage-savefeature/plan.md) | **Deferred** | FR-008, FR-004 saving |
 | 006 | [Secure committed files](006_secure_committed_files/plan.md) | **Deferred** | Rob 2026-11-03: user name in committed paths |
+| 007 | [Headphone cue on a second output device](007_headphone_cue/plan.md) | In progress: built, needs hardware test | Rob 2026-11-04: speakers + headphones guide |

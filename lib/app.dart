@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:yuvi_audio_engine/mixer_contracts.dart';
 
 import 'input/command_dispatcher.dart';
 import 'input/input_controller.dart';
@@ -21,6 +22,14 @@ class YuViRaysApp extends StatelessWidget {
           void apply() => mixer.setPreferTagBpm(settings.preferTagBpm);
           apply();
           settings.addListener(apply); // both live for the app's lifetime
+          // Reconnect last session's headphone device. Chrome may need a
+          // click first; the bridge waits for one.
+          final phonesId = settings.headphoneDeviceId;
+          if (phonesId != null) {
+            mixer.outputs.setHeadphoneDevice(
+              AudioOutputDevice(id: phonesId, name: settings.headphoneDeviceName ?? ''),
+            );
+          }
           return mixer;
         }),
         // Not lazy: keyboard shortcuts must work before anything reads it.

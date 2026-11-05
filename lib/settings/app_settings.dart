@@ -7,6 +7,32 @@ class AppSettings extends ChangeNotifier {
     _midiEnabled = _read(_midiKey) == 'true';
     _midiHintSeen = _read(_midiHintKey) == 'true';
     _preferTagBpm = _read(_preferTagBpmKey) == 'true';
+    _headphoneDeviceId = _read(_phonesIdKey);
+    _headphoneDeviceName = _read(_phonesNameKey);
+  }
+
+  static const _phonesIdKey = 'yuvi.settings.headphoneDeviceId';
+  static const _phonesNameKey = 'yuvi.settings.headphoneDeviceName';
+  String? _headphoneDeviceId;
+  String? _headphoneDeviceName;
+
+  /// The headphone output device chosen last time, or null for none.
+  /// Chrome keeps device IDs stable per site; the name is the fallback.
+  String? get headphoneDeviceId => _headphoneDeviceId;
+  String? get headphoneDeviceName => _headphoneDeviceName;
+
+  void rememberHeadphoneDevice(String? id, String? name) {
+    if (id == _headphoneDeviceId && name == _headphoneDeviceName) return;
+    _headphoneDeviceId = id;
+    _headphoneDeviceName = name;
+    if (id == null) {
+      _remove(_phonesIdKey);
+      _remove(_phonesNameKey);
+    } else {
+      _write(_phonesIdKey, id);
+      _write(_phonesNameKey, name ?? '');
+    }
+    notifyListeners();
   }
 
   static const _preferTagBpmKey = 'yuvi.settings.preferTagBpm';
@@ -63,6 +89,12 @@ class AppSettings extends ChangeNotifier {
   static void _write(String key, String value) {
     try {
       web.window.localStorage.setItem(key, value);
+    } catch (_) {}
+  }
+
+  static void _remove(String key) {
+    try {
+      web.window.localStorage.removeItem(key);
     } catch (_) {}
   }
 }

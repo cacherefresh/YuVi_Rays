@@ -1,15 +1,17 @@
 'use strict';
 
 // YuVi Rays - Digital Vinyl System
-// Audio graph:
-//   per deck:  Player → EQ3 (Hi / Mid / Low) → ChannelVol → XfadeGain ─┐
-//   master:    MasterVol ◀────────────────────────────────────────────┘
-//              MasterVol → Meter
-//              MasterVol → HeadphoneVol → Destination
+// Audio graph (plan 007):
+//   per deck:  Player → EQ3 (Hi / Mid / Low) ─┬→ ChannelVol → XfadeGain → MasterVol
+//                                             └→ CueGate (0/1, pre-fader) → CueBus
+//   master:    MasterVol → Meter
+//              MasterVol → Destination (speakers: the default output)
+//   phones:    CueBus    → MixCue    ─┐
+//              MasterVol → MixMaster ─┴→ PhonesVol → MediaStreamDestination
+//              → hidden <audio>.setSinkId(chosen device)
 //
-// HeadphoneVol is in series with master because a laptop has one stereo
-// output. When a real cue bus exists (split cue / second device), only the
-// master section below changes.
+// Everything stays in one AudioContext. The headphone path plays only once a
+// device is chosen; on the default device it would double the speakers.
 
 (function () {
   // Normalized 0..1 fader value → dB, with a -60 dB floor (≈ silence).
@@ -48,11 +50,27 @@
       // smoothing=0.8 gives a natural ballistic feel matching Pioneer meters
       const meter     = new Tone.Meter({ normalRange: false, smoothing: 0.8 });
       const masterVol = new Tone.Volume(0);
-      const phonesVol = new Tone.Volume(0);
       masterVol.connect(meter);       // meter reads post-master, like a Pioneer mixer
-      masterVol.connect(phonesVol);
-      phonesVol.toDestination();
-      this._master = { meter: meter, masterVol: masterVol, phonesVol: phonesVol };
+      masterVol.toDestination();      // speakers
+
+      // Headphone cue bus. Mix gains come from Dart (equal-power curve).
+      const cueBus    = new Tone.Gain(1);
+      const mixCue    = new Tone.Gain(Math.SQRT1_2);
+      const mixMaster = new Tone.Gain(Math.SQRT1_2);
+      const phonesVol = new Tone.Volume(0);
+      cueBus.connect(mixCue);
+      masterVol.connect(mixMaster);
+      mixCue.connect(phonesVol);
+      mixMaster.connect(phonesVol);
+      const phonesOut = Tone.getContext().rawContext.createMediaStreamDestination();
+      phonesVol.connect(phonesOut);
+
+      this._master = {
+        meter: meter, masterVol: masterVol,
+        cueBus: cueBus, mixCue: mixCue, mixMaster: mixMaster,
+        phonesVol: phonesVol, phonesOut: phonesOut,
+      };
+      this._watchOutputDevices();
       return this._master;
     },
 
@@ -70,18 +88,22 @@
       });
       const vol    = new Tone.Volume(faderToDb(0.8));
       const xfade  = new Tone.Gain(1);
+      const cueGate = new Tone.Gain(0);   // headphone cue (PFL), off by default
       const player = new Tone.Player({ loop: false });
 
       player.connect(eq3);
       eq3.connect(vol);
       vol.connect(xfade);
       xfade.connect(master.masterVol);
+      eq3.connect(cueGate);               // pre-fader: after EQ, before the fader
+      cueGate.connect(master.cueBus);
 
       this.decks[deckId] = {
         player:    player,
         eq3:       eq3,
         vol:       vol,
         xfade:     xfade,
+        cueGate:   cueGate,
         cuePoint:  0,
         startTime: 0,
         offset:    0,
@@ -255,6 +277,139 @@
 
     setHeadphoneVolume: function (normalized) {
       this.initMaster().phonesVol.volume.rampTo(faderToDb(normalized), RAMP_SECONDS);
+    },
+
+    // Headphone cue (PFL) on or off for one deck.
+    setHeadphoneCue: function (deckId, on) {
+      const deck = this.decks[deckId];
+      if (!deck) return;
+      deck.cueGate.gain.rampTo(on ? 1 : 0, RAMP_SECONDS);
+    },
+
+    // Linear gains for the cue and master sides of the headphone mix
+    // (equal-power curve, computed in Dart).
+    setHeadphoneMixGains: function (cueGain, masterGain) {
+      const m = this.initMaster();
+      m.mixCue.gain.rampTo(Math.max(0, Math.min(1, cueGain)), RAMP_SECONDS);
+      m.mixMaster.gain.rampTo(Math.max(0, Math.min(1, masterGain)), RAMP_SECONDS);
+    },
+
+    // ── Headphone output device ──────────────────────────────────────────
+    // Chrome hides output device names and IDs until the site has
+    // microphone permission, so listing may ask for it once. The microphone
+    // is stopped straight away; nothing is recorded.
+    _phones: { el: null, deviceId: null, deviceName: null, status: 'off' },
+
+    headphonesSupported: function () {
+      return typeof HTMLMediaElement !== 'undefined' &&
+        'setSinkId' in HTMLMediaElement.prototype &&
+        !!(navigator.mediaDevices && navigator.mediaDevices.enumerateDevices);
+    },
+
+    _outputs: async function () {
+      const all = await navigator.mediaDevices.enumerateDevices();
+      return all.filter((d) => d.kind === 'audiooutput');
+    },
+
+    // Resolves to a JSON string: [{id, name}], or {error} on failure.
+    listOutputDevices: async function (askPermission) {
+      if (!this.headphonesSupported()) return JSON.stringify({ error: 'unsupported' });
+      try {
+        let outs = await this._outputs();
+        const hidden = outs.length === 0 || outs.every((d) => !d.label);
+        if (hidden && askPermission) {
+          const mic = await navigator.mediaDevices.getUserMedia({ audio: true });
+          mic.getTracks().forEach((t) => t.stop());
+          outs = await this._outputs();
+        }
+        return JSON.stringify(outs
+          .filter((d) => d.deviceId && d.deviceId !== 'communications')
+          .map((d) => ({ id: d.deviceId, name: d.label || 'Unnamed output' })));
+      } catch (e) {
+        return JSON.stringify({ error: String((e && e.name) || e) });
+      }
+    },
+
+    _setPhonesStatus: function (status, message) {
+      this._phones.status = status;
+      this._emit('headphones', '', {
+        status: status, deviceId: this._phones.deviceId,
+        deviceName: this._phones.deviceName, message: message || null,
+      });
+    },
+
+    // Sends the headphone mix to [deviceId]; null or '' turns it off.
+    // Call from a user gesture (a click) so play() is allowed.
+    setHeadphoneSink: async function (deviceId, deviceName) {
+      const ph = this._phones;
+      if (!deviceId) {
+        if (ph.el) { ph.el.pause(); ph.el.srcObject = null; }
+        ph.deviceId = null; ph.deviceName = null;
+        this._setPhonesStatus('off');
+        return;
+      }
+      if (!this.headphonesSupported()) { this._setPhonesStatus('unsupported'); return; }
+      ph.deviceId = deviceId; ph.deviceName = deviceName || null;
+      this._setPhonesStatus('connecting');
+      try {
+        const m = this.initMaster();
+        if (!ph.el) ph.el = new Audio();
+        await ph.el.setSinkId(deviceId);
+        ph.el.srcObject = m.phonesOut.stream;
+        await this._playPhones(deviceId);
+      } catch (e) {
+        if (ph.el) ph.el.pause();
+        this._setPhonesStatus('error', String((e && e.message) || e));
+      }
+    },
+
+    // play() needs a user gesture until the page has had one. When it is
+    // blocked (e.g. a device restored at start-up), wait for the next click
+    // or key press and try again.
+    _playPhones: async function (deviceId) {
+      const ph = this._phones;
+      try {
+        await ph.el.play();
+        if (ph.deviceId === deviceId) this._setPhonesStatus('playing');
+      } catch (e) {
+        if (!e || e.name !== 'NotAllowedError') throw e;
+        this._setPhonesStatus('waitingForClick');
+        const retry = () => {
+          document.removeEventListener('pointerdown', retry, true);
+          document.removeEventListener('keydown', retry, true);
+          if (ph.deviceId === deviceId) {
+            this._playPhones(deviceId).catch((err) =>
+              this._setPhonesStatus('error', String((err && err.message) || err)));
+          }
+        };
+        document.addEventListener('pointerdown', retry, true);
+        document.addEventListener('keydown', retry, true);
+      }
+    },
+
+    getHeadphoneStatus: function () {
+      return this._phones.status;
+    },
+
+    // Follows plug / unplug: pause when the chosen device goes away and
+    // resume when it (or a device with the same name) comes back.
+    _watchOutputDevices: function () {
+      if (!this.headphonesSupported() || this._watching) return;
+      this._watching = true;
+      navigator.mediaDevices.addEventListener('devicechange', async () => {
+        const ph = this._phones;
+        this._emit('outputDevicesChanged', '', {});
+        if (!ph.deviceId) return;
+        const outs = await this._outputs();
+        const same = outs.find((d) => d.deviceId === ph.deviceId) ||
+          (ph.deviceName && outs.find((d) => d.label === ph.deviceName));
+        if (!same) {
+          if (ph.el) ph.el.pause();
+          this._setPhonesStatus('lost');
+        } else if (ph.status !== 'playing' && ph.status !== 'connecting') {
+          this.setHeadphoneSink(same.deviceId, same.label || ph.deviceName);
+        }
+      });
     },
 
     setEQ: function (deckId, band, value) {

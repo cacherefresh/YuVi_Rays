@@ -29,6 +29,8 @@ class DeckAudioController implements DeckControls {
   double get pitchFine => state.pitchFine;
   @override
   double get cuePoint => state.cuePoint;
+  @override
+  bool get headphoneCue => state.headphoneCue;
 
   DeckAudioController(this.state) {
     yuViDVS.initDeck(state.id);
@@ -40,6 +42,15 @@ class DeckAudioController implements DeckControls {
   void applyCrossfaderGain(double gain) {
     yuViDVS.setCrossfaderGain(state.id, gain.clamp(0.0, 1.0));
   }
+
+  @override
+  void setHeadphoneCue(bool on) {
+    state.update(headphoneCue: on);
+    yuViDVS.setHeadphoneCue(state.id, on);
+  }
+
+  @override
+  void toggleHeadphoneCue() => setHeadphoneCue(!state.headphoneCue);
 
   /// Play if paused, pause if playing.
   @override

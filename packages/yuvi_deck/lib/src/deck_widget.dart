@@ -115,12 +115,25 @@ class _DeckWidgetState extends State<DeckWidget> {
                 ),
                 const SizedBox(width: 10),
 
-                // Volume fader
-                FaderWidget(
-                  value: state.volume,
-                  onChanged: widget.controller.setVolume,
-                  color: color,
-                  height: 160,
+                // Volume fader, with the headphone cue (PFL) button below,
+                // as on a mixer channel strip.
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    FaderWidget(
+                      value: state.volume,
+                      onChanged: widget.controller.setVolume,
+                      color: color,
+                      height: 160,
+                    ),
+                    const SizedBox(height: 6),
+                    HeadphoneCueButton(
+                      active: state.headphoneCue,
+                      onPressed: widget.controller.toggleHeadphoneCue,
+                      color: color,
+                    ),
+                  ],
                 ),
               ],
             ),

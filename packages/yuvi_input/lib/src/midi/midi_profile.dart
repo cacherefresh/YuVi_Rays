@@ -8,6 +8,7 @@ enum KnobAction {
   channelVolume(deck: true, min: 0, max: 1),
   masterVolume(deck: false, min: 0, max: 1),
   headphoneVolume(deck: false, min: 0, max: 1),
+  headphoneMix(deck: false, min: 0, max: 1, centred: true),
   crossfader(deck: false, min: 0, max: 1, centred: true),
   pitchCoarse(deck: true, min: -16, max: 16),
   pitchFine(deck: true, min: -1, max: 1);
@@ -40,6 +41,9 @@ enum PadAction {
   playFromCue,
   armCue,
   commitCue,
+
+  /// Headphone cue (PFL) on/off. Not the cue point.
+  headphoneCue,
 
   /// Needs `slot`: set the hot cue when empty, else jump to it.
   hotCue,

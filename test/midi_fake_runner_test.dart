@@ -143,6 +143,49 @@ void main() {
     });
   });
 
+  group('headphone cue through the full MIDI path (any profile)', () {
+    final phones = MidiProfile.fromYaml('''
+name: Phones test
+knobs:
+  - { cc: 9, action: headphoneMix }
+  - { cc: 10, action: headphoneVolume }
+pads:
+  - { note: 60, channel: 1, deck: A, on_press: headphoneCue }
+  - { note: 61, channel: 1, deck: B, on_press: headphoneCue }
+''');
+
+    test('pads toggle each deck\'s headphone cue on and off', () {
+      final run = FakeMidiRunner(profile: phones);
+      run.sendAt(Duration.zero, [144, 60, 100]);
+      run.sendAt(const Duration(milliseconds: 50), [128, 60, 0]);
+      expect(run.mixer.decks['A']!.headphoneCue, isTrue);
+      expect(run.mixer.decks['B']!.headphoneCue, isFalse);
+      run.sendAt(const Duration(milliseconds: 100), [144, 61, 100]);
+      run.sendAt(const Duration(milliseconds: 150), [128, 61, 0]);
+      run.sendAt(const Duration(milliseconds: 200), [144, 60, 100]);
+      expect(run.mixer.decks['A']!.log, ['pflOn', 'pflOff']);
+      expect(run.mixer.decks['B']!.headphoneCue, isTrue);
+    });
+
+    test('mix knob: full left cue, centre both, full right master; level is separate', () {
+      final run = FakeMidiRunner(profile: phones);
+      run.sendAt(Duration.zero, [176, 9, 0]);
+      expect(run.mixer.headphoneMix, 0);
+      run.sendAt(const Duration(milliseconds: 50), [176, 9, 64]);
+      expect(run.mixer.headphoneMix, 0.5);
+      run.sendAt(const Duration(milliseconds: 100), [176, 9, 127]);
+      expect(run.mixer.headphoneMix, 1);
+      run.sendAt(const Duration(milliseconds: 150), [176, 10, 0]);
+      expect(run.mixer.headphoneVolume, 0);
+      expect(run.mixer.masterVolume, 1, reason: 'headphone controls never touch the master');
+    });
+
+    test('the cue pads do not touch transport', () {
+      final run = FakeMidiRunner(profile: phones)..sendAt(Duration.zero, [144, 60, 100]);
+      expect(run.mixer.decks['A']!.isPlaying, isFalse);
+    });
+  });
+
   group('K8 crossfader', () {
     test('full left = Deck A, centre = middle, full right = Deck B', () {
       final run = FakeMidiRunner(profile: profile);
